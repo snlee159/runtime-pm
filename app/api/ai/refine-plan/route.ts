@@ -67,7 +67,7 @@ Based on the user's instruction, suggest modifications to their plan. You can:
 - Adjust priorities and reasoning
 
 LOCKED TASKS (cannot be removed or modified):
-${lockedTaskIds.length > 0 ? lockedTaskIds.map(id => {
+${lockedTaskIds.length > 0 ? lockedTaskIds.map((id: string) => {
   const task = availableTasks.find((t: any) => t.id === id)
   return task ? `- ${task.title} (${task.id})` : ''
 }).join('\n') : 'None'}

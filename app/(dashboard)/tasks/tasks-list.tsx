@@ -184,7 +184,7 @@ function ParentTaskEditForm({
               onSave({
                 title,
                 description,
-                project_id: projectId || null,
+                project_id: projectId || undefined,
                 estimated_effort: parseInt(estimatedEffort),
                 energy_cost: energyCost,
                 focus_depth: focusDepth,
@@ -983,7 +983,7 @@ export function TasksList({ initialTasks, projects: initialProjects }: TasksList
         body: JSON.stringify({
           title,
           description,
-          project_id: projectId || null,
+          project_id: projectId || undefined,
         }),
       })
 
@@ -1034,7 +1034,7 @@ export function TasksList({ initialTasks, projects: initialProjects }: TasksList
           user_id: user.id,
           title,
           description: description || null,
-          project_id: projectId || null,
+          project_id: projectId || undefined,
           estimated_effort: parseInt(estimatedEffort),
           energy_cost: energyCost,
           focus_depth: focusDepth,
@@ -1068,7 +1068,7 @@ export function TasksList({ initialTasks, projects: initialProjects }: TasksList
           const subtaskInserts = validSubtasks.map((st, index) => ({
             user_id: user.id,
             parent_task_id: parentId,
-            project_id: projectId || null,
+            project_id: projectId || undefined,
             title: st.title,
             description: st.description || null,
             estimated_effort: st.estimated_effort,

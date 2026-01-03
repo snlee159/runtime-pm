@@ -266,7 +266,7 @@ export default function CreateTaskPage() {
     // Load all existing tasks (parent tasks only, no subtasks)
     const { data: tasks } = await supabase
       .from('tasks')
-      .select('id, title, description, project_id, status')
+      .select('*')
       .eq('user_id', user.id)
       .is('parent_task_id', null)
       .in('status', ['ready', 'scheduled', 'in_progress'])
@@ -292,7 +292,7 @@ export default function CreateTaskPage() {
         body: JSON.stringify({
           title,
           description,
-          project_id: projectId || null,
+          project_id: projectId || undefined,
         }),
       })
 
@@ -411,7 +411,7 @@ export default function CreateTaskPage() {
         .from('tasks')
         .insert({
           user_id: user.id,
-          project_id: projectId || null,
+          project_id: projectId || undefined,
           title,
           description: description || null,
           estimated_effort: estimatedEffort,
@@ -442,7 +442,7 @@ export default function CreateTaskPage() {
           const subtaskInserts = tasks.map(st => ({
             user_id: user.id,
             parent_task_id: parentId,
-            project_id: projectId || null,
+            project_id: projectId || undefined,
             title: st.title,
             description: st.description || null,
             estimated_effort: st.estimated_effort,

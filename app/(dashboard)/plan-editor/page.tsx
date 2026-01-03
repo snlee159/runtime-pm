@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Task, DailyPlan, DailyCheckIn, Project } from '@/lib/types'
@@ -16,7 +16,7 @@ interface PlanState {
   multitaskTaskIds: string[]
 }
 
-export default function PlanEditorPage() {
+function PlanEditorPageContent() {
   const [checkIn, setCheckIn] = useState<DailyCheckIn | null>(null)
   const [suggestedPlan, setSuggestedPlan] = useState<any>(null)
   const [allTasks, setAllTasks] = useState<TaskWithProject[]>([])
@@ -703,9 +703,9 @@ export default function PlanEditorPage() {
                 const filterTasksRecursively = (task: TaskWithProject): boolean => {
                   if (!taskSearch.trim()) return true
                   const searchLower = taskSearch.toLowerCase()
-                  const matchesTitle = task.title?.toLowerCase().includes(searchLower)
-                  const matchesDescription = task.description?.toLowerCase().includes(searchLower)
-                  const hasMatchingSubtask = task.subtasks?.some(st => filterTasksRecursively(st as TaskWithProject))
+                  const matchesTitle = task.title?.toLowerCase().includes(searchLower) ?? false
+                  const matchesDescription = task.description?.toLowerCase().includes(searchLower) ?? false
+                  const hasMatchingSubtask = task.subtasks?.some(st => filterTasksRecursively(st as TaskWithProject)) ?? false
                   return matchesTitle || matchesDescription || hasMatchingSubtask
                 }
                 
@@ -1053,6 +1053,18 @@ function HierarchicalTaskCard({ task, depth, searchTerm, isTaskInPlan, addTaskTo
         </div>
       )}
     </>
+  )
+}
+
+export default function PlanEditorPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-zinc-400">Loading plan editor...</div>
+      </div>
+    }>
+      <PlanEditorPageContent />
+    </Suspense>
   )
 }
 
