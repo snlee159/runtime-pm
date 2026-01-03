@@ -1,15 +1,18 @@
 {
-  "name": "auto-pm",
+  "name": "runtime-pm",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "TURBOPACK=0 next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.89.0",
     "next": "16.1.1",
+    "openai": "^6.15.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
