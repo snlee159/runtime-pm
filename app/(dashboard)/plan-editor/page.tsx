@@ -1,308 +1,401 @@
-'use client'
+"use client";
 
-import { useState, useEffect, Suspense } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Task, DailyPlan, DailyCheckIn, Project } from '@/lib/types'
-import Link from 'next/link'
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Task, DailyPlan, DailyCheckIn, Project } from "@/lib/types";
+import Link from "next/link";
 
 interface TaskWithProject extends Task {
-  project?: Project
+  project?: Project;
 }
 
 interface PlanState {
-  primaryTaskId: string | null
-  secondaryTaskIds: string[]
-  multitaskTaskIds: string[]
+  primaryTaskId: string | null;
+  secondaryTaskIds: string[];
+  multitaskTaskIds: string[];
 }
 
-function PlanEditorPageContent() {
-  const [checkIn, setCheckIn] = useState<DailyCheckIn | null>(null)
-  const [suggestedPlan, setSuggestedPlan] = useState<any>(null)
-  const [allTasks, setAllTasks] = useState<TaskWithProject[]>([])
-  const [allTasksFlat, setAllTasksFlat] = useState<TaskWithProject[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
+export default function PlanEditorPage() {
+  const [checkIn, setCheckIn] = useState<DailyCheckIn | null>(null);
+  const [suggestedPlan, setSuggestedPlan] = useState<any>(null);
+  const [allTasks, setAllTasks] = useState<TaskWithProject[]>([]);
+  const [allTasksFlat, setAllTasksFlat] = useState<TaskWithProject[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [planState, setPlanState] = useState<PlanState>({
     primaryTaskId: null,
     secondaryTaskIds: [],
     multitaskTaskIds: [],
-  })
-  const [reasoning, setReasoning] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [lockedTaskIds, setLockedTaskIds] = useState<string[]>([])
-  const [existingPlan, setExistingPlan] = useState<any>(null)
-  
+  });
+  const [reasoning, setReasoning] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [lockedTaskIds, setLockedTaskIds] = useState<string[]>([]);
+  const [existingPlan, setExistingPlan] = useState<any>(null);
+
   // AI Refinement
-  const [aiInstruction, setAiInstruction] = useState('')
-  const [refining, setRefining] = useState(false)
-  const [refinementHistory, setRefinementHistory] = useState<string[]>([])
-  
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [refining, setRefining] = useState(false);
+  const [refinementHistory, setRefinementHistory] = useState<string[]>([]);
+
   // Search
-  const [taskSearch, setTaskSearch] = useState('')
-  
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const supabase = createClient()
-  const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
+  const [taskSearch, setTaskSearch] = useState("");
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+  const date =
+    searchParams.get("date") || new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    loadPlanningData()
-  }, [date])
+    loadPlanningData();
+  }, [date]);
 
   // Warn user before leaving if plan not saved (create mode only)
   useEffect(() => {
-    if (isEditMode || loading) return
+    if (isEditMode || loading) return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = '' // Chrome requires returnValue to be set
-    }
+      e.preventDefault();
+      e.returnValue = ""; // Chrome requires returnValue to be set
+    };
 
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isEditMode, loading])
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isEditMode, loading]);
 
   const loadPlanningData = async () => {
     try {
-      setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
+      setLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/auth/login')
-        return
+        router.push("/auth/login");
+        return;
       }
 
       // Load check-in
       const { data: checkInData, error: checkInError } = await supabase
-        .from('daily_checkins')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', date)
-        .single()
+        .from("daily_checkins")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("date", date)
+        .single();
 
       if (checkInError || !checkInData) {
-        setError('Check-in not found. Please complete your morning check-in first.')
-        setLoading(false)
-        return
+        setError(
+          "Check-in not found. Please complete your morning check-in first."
+        );
+        setLoading(false);
+        return;
       }
-      setCheckIn(checkInData)
+      setCheckIn(checkInData);
 
-      // Load parent tasks (ready, scheduled, and completed) with dependencies and projects
+      // Load parent tasks (incomplete and complete) with dependencies and projects
       const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select('*, project:projects(*)')
-        .eq('user_id', user.id)
-        .is('parent_task_id', null)
-        .in('status', ['ready', 'scheduled', 'completed'])
-        .order('created_at', { ascending: false })
+        .from("tasks")
+        .select("*, project:projects(*)")
+        .eq("user_id", user.id)
+        .is("parent_task_id", null)
+        .in("status", ["incomplete", "complete"])
+        .order("created_at", { ascending: false });
 
-      let tasksWithSubtasks: TaskWithProject[] = []
+      let tasksWithSubtasks: TaskWithProject[] = [];
 
       if (tasksError) {
-        console.error('Error loading tasks:', tasksError)
+        console.error("Error loading tasks:", tasksError);
       } else {
         // Load subtasks recursively
-        const loadSubtasksRecursively = async (parentIds: string[]): Promise<any[]> => {
-          if (parentIds.length === 0) return []
-          
-          const { data: subtasks } = await supabase
-            .from('tasks')
-            .select('*')
-            .in('parent_task_id', parentIds)
-            .in('status', ['ready', 'scheduled', 'completed'])
-            .order('display_order', { ascending: true })
-          
-          if (!subtasks || subtasks.length === 0) return []
-          
-          // Load nested subtasks for these subtasks
-          const nestedIds = subtasks.map(st => st.id)
-          const nestedSubtasks = await loadSubtasksRecursively(nestedIds)
-          
-          // Attach nested subtasks to their parents
-          return subtasks.map(st => ({
-            ...st,
-            subtasks: nestedSubtasks.filter(nst => nst.parent_task_id === st.id)
-          }))
-        }
+        const loadSubtasksRecursively = async (
+          parentIds: string[]
+        ): Promise<any[]> => {
+          if (parentIds.length === 0) return [];
 
-        const taskIds = tasksData?.map(t => t.id) || []
-        const allSubtasks = await loadSubtasksRecursively(taskIds)
+          const { data: subtasks } = await supabase
+            .from("tasks")
+            .select("*")
+            .in("parent_task_id", parentIds)
+            .in("status", ["incomplete", "complete"])
+            .order("display_order", { ascending: true });
+
+          if (!subtasks || subtasks.length === 0) return [];
+
+          // Load nested subtasks for these subtasks
+          const nestedIds = subtasks.map((st) => st.id);
+          const nestedSubtasks = await loadSubtasksRecursively(nestedIds);
+
+          // Attach nested subtasks to their parents
+          return subtasks.map((st) => ({
+            ...st,
+            subtasks: nestedSubtasks.filter(
+              (nst) => nst.parent_task_id === st.id
+            ),
+          }));
+        };
+
+        const taskIds = tasksData?.map((t) => t.id) || [];
+        const allSubtasks = await loadSubtasksRecursively(taskIds);
 
         // Load dependencies for all tasks
         const { data: dependencies } = await supabase
-          .from('task_dependencies')
-          .select('*')
-          .in('task_id', taskIds)
+          .from("task_dependencies")
+          .select("*")
+          .in("task_id", taskIds);
 
-        tasksWithSubtasks = tasksData?.map(task => ({
-          ...task,
-          dependencies: dependencies?.filter(dep => dep.task_id === task.id) || [],
-          subtasks: allSubtasks.filter(st => st.parent_task_id === task.id)
-        })) || []
+        tasksWithSubtasks =
+          tasksData?.map((task) => ({
+            ...task,
+            dependencies:
+              dependencies?.filter((dep) => dep.task_id === task.id) || [],
+            subtasks: allSubtasks.filter((st) => st.parent_task_id === task.id),
+          })) || [];
 
-        setAllTasks(tasksWithSubtasks)
+        setAllTasks(tasksWithSubtasks);
       }
 
       // Create a flattened array of all tasks (including nested subtasks) for easy lookup by ID
       const flattenTasks = (taskList: TaskWithProject[]): TaskWithProject[] => {
-        const flat: TaskWithProject[] = []
+        const flat: TaskWithProject[] = [];
         const flatten = (t: TaskWithProject) => {
-          flat.push(t)
+          flat.push(t);
           if (t.subtasks && t.subtasks.length > 0) {
-            t.subtasks.forEach(st => flatten(st as TaskWithProject))
+            t.subtasks.forEach((st) => flatten(st as TaskWithProject));
           }
-        }
-        taskList.forEach(flatten)
-        return flat
-      }
-      
-      const flatTasks = flattenTasks(tasksWithSubtasks)
-      setAllTasksFlat(flatTasks)
+        };
+        taskList.forEach(flatten);
+        return flat;
+      };
+
+      const flatTasks = flattenTasks(tasksWithSubtasks);
+      setAllTasksFlat(flatTasks);
 
       // Load projects
       const { data: projectsData } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('display_order', { ascending: true })
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("display_order", { ascending: true });
 
-      setProjects(projectsData || [])
+      setProjects(projectsData || []);
 
       // Check if plan already exists (edit mode)
       const { data: existingPlanData } = await supabase
-        .from('daily_plans')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', date)
-        .single()
+        .from("daily_plans")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("date", date)
+        .single();
 
       if (existingPlanData) {
         // Edit mode - load existing plan
-        setIsEditMode(true)
-        setExistingPlan(existingPlanData)
-        
+        setIsEditMode(true);
+        setExistingPlan(existingPlanData);
+
         // Find which tasks are completed (locked)
         const allPlanTaskIds = [
           existingPlanData.primary_focus_task_id,
           ...(existingPlanData.secondary_task_ids || []),
-          ...(existingPlanData.multitask_task_ids || [])
-        ].filter(Boolean)
-        
+          ...(existingPlanData.multitask_task_ids || []),
+        ].filter(Boolean);
+
         const completedIds = flatTasks
-          .filter(t => allPlanTaskIds.includes(t.id) && t.status === 'completed')
-          .map(t => t.id)
-        
-        setLockedTaskIds(completedIds)
-        
+          .filter(
+            (t) => allPlanTaskIds.includes(t.id) && t.status === "complete"
+          )
+          .map((t) => t.id);
+
+        setLockedTaskIds(completedIds);
+
         // Initialize with existing plan
         setPlanState({
           primaryTaskId: existingPlanData.primary_focus_task_id || null,
           secondaryTaskIds: existingPlanData.secondary_task_ids || [],
           multitaskTaskIds: existingPlanData.multitask_task_ids || [],
-        })
-        setReasoning(existingPlanData.reasoning || '')
+        });
+        setReasoning(existingPlanData.reasoning || "");
       } else {
         // Create mode - generate AI suggestion (don't save yet)
-        const suggestionResponse = await fetch('/api/ai/suggest-plan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const suggestionResponse = await fetch("/api/ai/suggest-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ date }),
-        })
+        });
 
         if (suggestionResponse.ok) {
-          const { suggestion } = await suggestionResponse.json()
-          setSuggestedPlan(suggestion)
+          const { suggestion } = await suggestionResponse.json();
+          setSuggestedPlan(suggestion);
           // Initialize plan state with AI suggestion
           setPlanState({
             primaryTaskId: suggestion.primary_focus_task_id || null,
             secondaryTaskIds: suggestion.secondary_task_ids || [],
             multitaskTaskIds: suggestion.multitask_task_ids || [],
-          })
-          setReasoning(suggestion.reasoning || '')
+          });
+          setReasoning(suggestion.reasoning || "");
         }
       }
 
-      setLoading(false)
+      setLoading(false);
     } catch (err: any) {
-      setError(err.message || 'Failed to load planning data')
-      setLoading(false)
+      setError(err.message || "Failed to load planning data");
+      setLoading(false);
     }
-  }
+  };
 
   const calculateTotalTime = () => {
     const allSelectedIds = [
       planState.primaryTaskId,
       ...planState.secondaryTaskIds,
       ...planState.multitaskTaskIds,
-    ].filter(Boolean) as string[]
+    ].filter(Boolean) as string[];
 
     return allSelectedIds.reduce((total, taskId) => {
-      const task = allTasksFlat.find(t => t.id === taskId)
-      return total + (task?.estimated_effort || 0)
-    }, 0)
-  }
+      const task = allTasksFlat.find((t) => t.id === taskId);
+      return total + (task?.estimated_effort || 0);
+    }, 0);
+  };
 
   const getAvailableMinutes = () => {
-    return (checkIn?.available_hours || 0) * 60
-  }
+    return (checkIn?.available_hours || 0) * 60;
+  };
 
   const getTimePercentage = () => {
-    const available = getAvailableMinutes()
-    if (available === 0) return 0
-    return Math.round((calculateTotalTime() / available) * 100)
-  }
+    const available = getAvailableMinutes();
+    if (available === 0) return 0;
+    return Math.round((calculateTotalTime() / available) * 100);
+  };
 
   const isTaskInPlan = (taskId: string) => {
-    return planState.primaryTaskId === taskId ||
-           planState.secondaryTaskIds.includes(taskId) ||
-           planState.multitaskTaskIds.includes(taskId)
-  }
+    return (
+      planState.primaryTaskId === taskId ||
+      planState.secondaryTaskIds.includes(taskId) ||
+      planState.multitaskTaskIds.includes(taskId)
+    );
+  };
 
   const isTaskLocked = (taskId: string) => {
-    return lockedTaskIds.includes(taskId)
-  }
+    return lockedTaskIds.includes(taskId);
+  };
 
-  const addTaskToPlan = (taskId: string, category: 'primary' | 'secondary' | 'multitask') => {
-    if (isTaskInPlan(taskId)) return
+  const addTaskToPlan = (
+    taskId: string,
+    category: "primary" | "secondary" | "multitask"
+  ) => {
+    if (isTaskInPlan(taskId)) return;
 
-    if (category === 'primary') {
-      setPlanState(prev => ({ ...prev, primaryTaskId: taskId }))
-    } else if (category === 'secondary') {
-      setPlanState(prev => ({ ...prev, secondaryTaskIds: [...prev.secondaryTaskIds, taskId] }))
-    } else {
-      setPlanState(prev => ({ ...prev, multitaskTaskIds: [...prev.multitaskTaskIds, taskId] }))
+    // Find the task
+    const task = allTasksFlat.find((t) => t.id === taskId);
+    if (!task) return;
+
+    // If task has children (subtasks), add all children instead of the parent
+    if (task.subtasks && task.subtasks.length > 0) {
+      // Collect all incomplete leaf subtasks (recursively)
+      const collectLeafSubtasks = (t: TaskWithProject): TaskWithProject[] => {
+        if (!t.subtasks || t.subtasks.length === 0) {
+          // Only include if incomplete and not already in plan
+          return t.status === "incomplete" && !isTaskInPlan(t.id) ? [t] : [];
+        }
+        const leaves: TaskWithProject[] = [];
+        for (const subtask of t.subtasks) {
+          leaves.push(...collectLeafSubtasks(subtask as TaskWithProject));
+        }
+        return leaves;
+      };
+
+      const leafSubtasks = collectLeafSubtasks(task);
+
+      if (category === "primary") {
+        // First child becomes primary, rest sorted into secondary/multitask based on multitask_safe
+        if (leafSubtasks.length > 0) {
+          const remaining = leafSubtasks.slice(1);
+          const multitaskSafe = remaining.filter((t) => t.multitask_safe);
+          const notMultitaskSafe = remaining.filter((t) => !t.multitask_safe);
+
+          setPlanState((prev) => ({
+            ...prev,
+            primaryTaskId: leafSubtasks[0].id,
+            secondaryTaskIds: [
+              ...prev.secondaryTaskIds,
+              ...notMultitaskSafe.map((t) => t.id),
+            ],
+            multitaskTaskIds: [
+              ...prev.multitaskTaskIds,
+              ...multitaskSafe.map((t) => t.id),
+            ],
+          }));
+        }
+      } else if (category === "secondary") {
+        // Sort children: multitask-safe → multitask section, others → secondary section
+        const multitaskSafe = leafSubtasks.filter((t) => t.multitask_safe);
+        const notMultitaskSafe = leafSubtasks.filter((t) => !t.multitask_safe);
+
+        setPlanState((prev) => ({
+          ...prev,
+          secondaryTaskIds: [
+            ...prev.secondaryTaskIds,
+            ...notMultitaskSafe.map((t) => t.id),
+          ],
+          multitaskTaskIds: [
+            ...prev.multitaskTaskIds,
+            ...multitaskSafe.map((t) => t.id),
+          ],
+        }));
+      }
+      return;
     }
-  }
+
+    // Task has no children - add it based on its properties
+    if (category === "primary") {
+      setPlanState((prev) => ({ ...prev, primaryTaskId: taskId }));
+    } else if (category === "secondary") {
+      // If multitask-safe, add to multitask section; otherwise add to secondary
+      if (task.multitask_safe) {
+        setPlanState((prev) => ({
+          ...prev,
+          multitaskTaskIds: [...prev.multitaskTaskIds, taskId],
+        }));
+      } else {
+        setPlanState((prev) => ({
+          ...prev,
+          secondaryTaskIds: [...prev.secondaryTaskIds, taskId],
+        }));
+      }
+    }
+  };
 
   const removeTaskFromPlan = (taskId: string) => {
     // Don't allow removing locked tasks
-    if (isTaskLocked(taskId)) return
-    
-    setPlanState(prev => ({
-      primaryTaskId: prev.primaryTaskId === taskId ? null : prev.primaryTaskId,
-      secondaryTaskIds: prev.secondaryTaskIds.filter(id => id !== taskId),
-      multitaskTaskIds: prev.multitaskTaskIds.filter(id => id !== taskId),
-    }))
-  }
+    if (isTaskLocked(taskId)) return;
 
-  const moveTask = (taskId: string, from: string, to: 'primary' | 'secondary' | 'multitask') => {
-    removeTaskFromPlan(taskId)
-    addTaskToPlan(taskId, to)
-  }
+    setPlanState((prev) => ({
+      primaryTaskId: prev.primaryTaskId === taskId ? null : prev.primaryTaskId,
+      secondaryTaskIds: prev.secondaryTaskIds.filter((id) => id !== taskId),
+      multitaskTaskIds: prev.multitaskTaskIds.filter((id) => id !== taskId),
+    }));
+  };
+
+  const moveTask = (
+    taskId: string,
+    from: string,
+    to: "primary" | "secondary" | "multitask"
+  ) => {
+    removeTaskFromPlan(taskId);
+    addTaskToPlan(taskId, to);
+  };
 
   const refineWithAI = async () => {
-    if (!aiInstruction.trim()) return
-    
-    try {
-      setRefining(true)
-      setError(null)
+    if (!aiInstruction.trim()) return;
 
-      const response = await fetch('/api/ai/refine-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    try {
+      setRefining(true);
+      setError(null);
+
+      const response = await fetch("/api/ai/refine-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           instruction: aiInstruction,
           currentPlan: planState,
@@ -310,121 +403,129 @@ function PlanEditorPageContent() {
           checkIn,
           lockedTaskIds,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to refine plan')
+        throw new Error("Failed to refine plan");
       }
 
-      const { refinedPlan } = await response.json()
-      
+      const { refinedPlan } = await response.json();
+
       // Update plan state with AI refinement
       setPlanState({
         primaryTaskId: refinedPlan.primary_task_id || null,
         secondaryTaskIds: refinedPlan.secondary_task_ids || [],
         multitaskTaskIds: refinedPlan.multitask_task_ids || [],
-      })
-      
+      });
+
       // Update reasoning with changes
-      const newReasoning = `${refinedPlan.reasoning}\n\n${refinedPlan.changes_summary ? '✨ ' + refinedPlan.changes_summary : ''}`
-      setReasoning(newReasoning)
-      
+      const newReasoning = `${refinedPlan.reasoning}\n\n${
+        refinedPlan.changes_summary ? "✨ " + refinedPlan.changes_summary : ""
+      }`;
+      setReasoning(newReasoning);
+
       // Add to history
-      setRefinementHistory(prev => [...prev, `"${aiInstruction}" → ${refinedPlan.changes_summary || 'Updated'}`])
-      
+      setRefinementHistory((prev) => [
+        ...prev,
+        `"${aiInstruction}" → ${refinedPlan.changes_summary || "Updated"}`,
+      ]);
+
       // Clear instruction
-      setAiInstruction('')
+      setAiInstruction("");
     } catch (err: any) {
-      setError(err.message || 'Failed to refine plan with AI')
+      setError(err.message || "Failed to refine plan with AI");
     } finally {
-      setRefining(false)
+      setRefining(false);
     }
-  }
+  };
 
   const savePlan = async () => {
     try {
-      setSaving(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      setSaving(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
 
-      const totalTime = calculateTotalTime()
+      const totalTime = calculateTotalTime();
       const allSelectedIds = [
         planState.primaryTaskId,
         ...planState.secondaryTaskIds,
         ...planState.multitaskTaskIds,
-      ].filter(Boolean) as string[]
+      ].filter(Boolean) as string[];
 
       // Save plan
-      const { error: planError } = await supabase
-        .from('daily_plans')
-        .upsert({
+      const { error: planError } = await supabase.from("daily_plans").upsert(
+        {
           user_id: user.id,
           date,
           checkin_id: checkIn?.id,
           primary_focus_task_id: planState.primaryTaskId,
           secondary_task_ids: planState.secondaryTaskIds,
           multitask_task_ids: planState.multitaskTaskIds,
-          reasoning: reasoning || 'Custom plan created by user',
+          reasoning: reasoning || "Custom plan created by user",
           estimated_total_effort: totalTime,
           context_switches: planState.secondaryTaskIds.length,
-        }, {
-          onConflict: 'user_id,date'
-        })
+        },
+        {
+          onConflict: "user_id,date",
+        }
+      );
 
-      if (planError) throw planError
+      if (planError) throw planError;
 
       // Update task statuses - only for incomplete tasks
-      const incompleteTaskIds = allSelectedIds.filter(id => !lockedTaskIds.includes(id))
+      const incompleteTaskIds = allSelectedIds.filter(
+        (id) => !lockedTaskIds.includes(id)
+      );
       if (incompleteTaskIds.length > 0) {
-        await supabase
-          .from('tasks')
-          .update({ status: 'scheduled' })
-          .in('id', incompleteTaskIds)
+        // Tasks are already incomplete, no need to update status
+        // (removing the 'scheduled' concept)
       }
 
-      // In edit mode, if tasks were removed from plan, set them back to 'ready'
+      // In edit mode, tasks remain incomplete when removed from plan
       if (isEditMode && existingPlan) {
         const previousTaskIds = [
           existingPlan.primary_focus_task_id,
           ...(existingPlan.secondary_task_ids || []),
-          ...(existingPlan.multitask_task_ids || [])
-        ].filter(Boolean)
-        
-        const removedTaskIds = previousTaskIds.filter(id => 
-          !allSelectedIds.includes(id) && !lockedTaskIds.includes(id)
-        )
-        
+          ...(existingPlan.multitask_task_ids || []),
+        ].filter(Boolean);
+
+        const removedTaskIds = previousTaskIds.filter(
+          (id) => !allSelectedIds.includes(id) && !lockedTaskIds.includes(id)
+        );
+
         if (removedTaskIds.length > 0) {
-          await supabase
-            .from('tasks')
-            .update({ status: 'ready' })
-            .in('id', removedTaskIds)
+          // Tasks remain incomplete when removed from plan
+          // (no status update needed)
         }
       }
 
-      router.push('/')
-      router.refresh()
+      router.push(`/?date=${date}`);
+      router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Failed to save plan')
-      setSaving(false)
+      setError(err.message || "Failed to save plan");
+      setSaving(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="text-center py-12">
-          <div className="text-zinc-400">Loading your planning workspace...</div>
+          <div className="text-zinc-400">
+            Loading your planning workspace...
+          </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !checkIn) {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="bg-red-950/30 border border-red-900 rounded-lg p-6">
-          <p className="text-red-400 mb-4">{error || 'Check-in not found'}</p>
+          <p className="text-red-400 mb-4">{error || "Check-in not found"}</p>
           <Link
             href="/checkin"
             className="inline-block px-4 py-2 bg-white text-black font-medium rounded-lg hover:bg-zinc-200"
@@ -433,28 +534,31 @@ function PlanEditorPageContent() {
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
-  const timePercentage = getTimePercentage()
-  
+  const timePercentage = getTimePercentage();
+
   // Helper to check if task or any subtask is available
   const hasAnyAvailableTask = (task: TaskWithProject): boolean => {
-    if (task.status === 'ready' && !isTaskInPlan(task.id)) return true
-    return task.subtasks?.some(st => hasAnyAvailableTask(st as TaskWithProject)) || false
-  }
-  
+    if (task.status === "incomplete" && !isTaskInPlan(task.id)) return true;
+    return (
+      task.subtasks?.some((st) => hasAnyAvailableTask(st as TaskWithProject)) ||
+      false
+    );
+  };
+
   // Include all tasks that have at least one ready task/subtask
-  const availableTasks = allTasks.filter(t => hasAnyAvailableTask(t))
-  const tasksByProject = new Map<string, TaskWithProject[]>()
-  
-  availableTasks.forEach(task => {
-    const projectId = task.project_id || 'no-project'
+  const availableTasks = allTasks.filter((t) => hasAnyAvailableTask(t));
+  const tasksByProject = new Map<string, TaskWithProject[]>();
+
+  availableTasks.forEach((task) => {
+    const projectId = task.project_id || "no-project";
     if (!tasksByProject.has(projectId)) {
-      tasksByProject.set(projectId, [])
+      tasksByProject.set(projectId, []);
     }
-    tasksByProject.get(projectId)!.push(task)
-  })
+    tasksByProject.get(projectId)!.push(task);
+  });
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -462,7 +566,7 @@ function PlanEditorPageContent() {
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <h1 className="text-3xl font-bold">
-            {isEditMode ? 'Edit Your Plan' : 'Build Your Daily Plan'}
+            {isEditMode ? "Edit Your Plan" : "Build Your Daily Plan"}
           </h1>
           {isEditMode ? (
             <span className="px-3 py-1 bg-blue-900/50 text-blue-300 text-sm font-medium rounded-full">
@@ -475,10 +579,9 @@ function PlanEditorPageContent() {
           )}
         </div>
         <p className="text-zinc-400">
-          {isEditMode 
-            ? 'Adjust your plan. Completed tasks are locked.'
-            : 'Review the AI suggestion and customize your plan. Your plan will be saved when you click "Finalize Plan".'
-          }
+          {isEditMode
+            ? "Adjust your plan. Completed tasks are locked."
+            : 'Review the AI suggestion and customize your plan. Your plan will be saved when you click "Finalize Plan".'}
         </p>
       </div>
 
@@ -487,8 +590,15 @@ function PlanEditorPageContent() {
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm font-medium">Time Capacity</div>
           <div className="text-sm">
-            <span className={timePercentage > 100 ? 'text-red-400 font-bold' : 'text-zinc-400'}>
-              {Math.round(calculateTotalTime() / 60 * 10) / 10}h / {checkIn.available_hours}h
+            <span
+              className={
+                timePercentage > 100
+                  ? "text-red-400 font-bold"
+                  : "text-zinc-400"
+              }
+            >
+              {Math.round((calculateTotalTime() / 60) * 10) / 10}h /{" "}
+              {checkIn.available_hours}h
             </span>
             <span className="text-zinc-500 ml-2">({timePercentage}%)</span>
           </div>
@@ -497,17 +607,18 @@ function PlanEditorPageContent() {
           <div
             className={`h-full transition-all duration-300 ${
               timePercentage > 100
-                ? 'bg-red-500'
+                ? "bg-red-500"
                 : timePercentage > 85
-                ? 'bg-yellow-500'
-                : 'bg-green-500'
+                ? "bg-yellow-500"
+                : "bg-green-500"
             }`}
             style={{ width: `${Math.min(timePercentage, 100)}%` }}
           />
         </div>
         {timePercentage > 100 && (
           <p className="text-xs text-red-400 mt-2">
-            ⚠️ You've exceeded your available time! Consider removing some tasks.
+            ⚠️ You've exceeded your available time! Consider removing some
+            tasks.
           </p>
         )}
       </div>
@@ -529,7 +640,7 @@ function PlanEditorPageContent() {
                 type="text"
                 value={aiInstruction}
                 onChange={(e) => setAiInstruction(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && refineWithAI()}
+                onKeyDown={(e) => e.key === "Enter" && refineWithAI()}
                 placeholder='e.g., "add more creative work" or "remove the hardest tasks" or "focus on frontend"'
                 className="flex-1 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-700 text-sm"
                 disabled={refining}
@@ -539,14 +650,16 @@ function PlanEditorPageContent() {
                 disabled={refining || !aiInstruction.trim()}
                 className="px-6 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {refining ? 'Refining...' : 'Refine'}
+                {refining ? "Refining..." : "Refine"}
               </button>
             </div>
-            
+
             {/* Refinement History */}
             {refinementHistory.length > 0 && (
               <div className="mt-3 pt-3 border-t border-purple-900/30">
-                <div className="text-xs text-zinc-500 mb-2">Recent refinements:</div>
+                <div className="text-xs text-zinc-500 mb-2">
+                  Recent refinements:
+                </div>
                 <div className="space-y-1">
                   {refinementHistory.slice(-3).map((item, idx) => (
                     <div key={idx} className="text-xs text-purple-300">
@@ -562,7 +675,7 @@ function PlanEditorPageContent() {
           {(suggestedPlan || reasoning) && (
             <div className="bg-blue-950/30 border border-blue-900 rounded-lg p-4">
               <div className="text-sm font-medium text-blue-300 mb-2">
-                {isEditMode ? 'Current Plan Reasoning' : 'AI Suggestion'}
+                {isEditMode ? "Current Plan Reasoning" : "AI Suggestion"}
               </div>
               <p className="text-sm text-blue-200 whitespace-pre-line">
                 {reasoning || suggestedPlan?.reasoning}
@@ -574,21 +687,27 @@ function PlanEditorPageContent() {
           <div>
             <h2 className="text-lg font-semibold mb-3">Primary Focus</h2>
             <div className="min-h-[100px] p-4 bg-zinc-900 border-2 border-dashed border-zinc-800 rounded-lg">
-              {planState.primaryTaskId ? (() => {
-                const task = allTasksFlat.find(t => t.id === planState.primaryTaskId)
-                return task ? (
-                  <TaskCard
-                    task={task}
-                    onRemove={() => removeTaskFromPlan(planState.primaryTaskId!)}
-                    category="primary"
-                    isLocked={isTaskLocked(planState.primaryTaskId)}
-                  />
-                ) : (
-                  <div className="text-center text-red-500 py-8">
-                    Task not found: {planState.primaryTaskId}
-                  </div>
-                )
-              })() : (
+              {planState.primaryTaskId ? (
+                (() => {
+                  const task = allTasksFlat.find(
+                    (t) => t.id === planState.primaryTaskId
+                  );
+                  return task ? (
+                    <TaskCard
+                      task={task}
+                      onRemove={() =>
+                        removeTaskFromPlan(planState.primaryTaskId!)
+                      }
+                      category="primary"
+                      isLocked={isTaskLocked(planState.primaryTaskId)}
+                    />
+                  ) : (
+                    <div className="text-center text-red-500 py-8">
+                      Task not found: {planState.primaryTaskId}
+                    </div>
+                  );
+                })()
+              ) : (
                 <div className="text-center text-zinc-500 py-8">
                   Drag a task here or click "Set as Primary" from the sidebar
                 </div>
@@ -601,10 +720,10 @@ function PlanEditorPageContent() {
             <h2 className="text-lg font-semibold mb-3">Secondary Tasks</h2>
             <div className="min-h-[100px] p-4 bg-zinc-900 border-2 border-dashed border-zinc-800 rounded-lg space-y-2">
               {planState.secondaryTaskIds.length > 0 ? (
-                planState.secondaryTaskIds.map(taskId => (
+                planState.secondaryTaskIds.map((taskId) => (
                   <TaskCard
                     key={taskId}
-                    task={allTasksFlat.find(t => t.id === taskId)!}
+                    task={allTasksFlat.find((t) => t.id === taskId)!}
                     onRemove={() => removeTaskFromPlan(taskId)}
                     category="secondary"
                     isLocked={isTaskLocked(taskId)}
@@ -620,14 +739,16 @@ function PlanEditorPageContent() {
 
           {/* Multitask Tasks */}
           <div>
-            <h2 className="text-lg font-semibold mb-3">Multitask-Safe (For Downtime)</h2>
+            <h2 className="text-lg font-semibold mb-3">
+              Multitask-Safe (For Downtime)
+            </h2>
             <div className="min-h-[80px] p-4 bg-zinc-900 border-2 border-dashed border-zinc-800 rounded-lg">
               {planState.multitaskTaskIds.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
-                  {planState.multitaskTaskIds.map(taskId => (
+                  {planState.multitaskTaskIds.map((taskId) => (
                     <TaskCard
                       key={taskId}
-                      task={allTasksFlat.find(t => t.id === taskId)!}
+                      task={allTasksFlat.find((t) => t.id === taskId)!}
                       onRemove={() => removeTaskFromPlan(taskId)}
                       category="multitask"
                       isLocked={isTaskLocked(taskId)}
@@ -647,22 +768,31 @@ function PlanEditorPageContent() {
           <div className="flex gap-3 pt-4">
             <button
               onClick={savePlan}
-              disabled={saving || (!planState.primaryTaskId && planState.secondaryTaskIds.length === 0)}
+              disabled={
+                saving ||
+                (!planState.primaryTaskId &&
+                  planState.secondaryTaskIds.length === 0)
+              }
               className="flex-1 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {saving ? 'Saving...' : isEditMode ? 'Save Changes' : '✓ Finalize Plan'}
+              {saving
+                ? "Saving..."
+                : isEditMode
+                ? "Save Changes"
+                : "✓ Finalize Plan"}
             </button>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push(`/?date=${date}`)}
               className="px-6 py-3 bg-zinc-800 text-white font-medium rounded-lg hover:bg-zinc-700 transition-colors"
             >
-              {isEditMode ? 'Back' : 'Cancel (Don\'t Save)'}
+              {isEditMode ? "Back" : "Cancel (Don't Save)"}
             </button>
           </div>
-          
+
           {!isEditMode && (
             <p className="text-xs text-zinc-500 text-center mt-2">
-              Your plan is not saved yet. Click "Finalize Plan" to save and start your day.
+              Your plan is not saved yet. Click "Finalize Plan" to save and
+              start your day.
             </p>
           )}
 
@@ -681,11 +811,13 @@ function PlanEditorPageContent() {
             {isEditMode && lockedTaskIds.length > 0 && (
               <div className="mb-3 p-3 bg-green-900/20 border border-green-700/50 rounded-lg">
                 <div className="text-xs text-green-300">
-                  🔒 {lockedTaskIds.length} completed {lockedTaskIds.length === 1 ? 'task is' : 'tasks are'} locked in your plan
+                  🔒 {lockedTaskIds.length} completed{" "}
+                  {lockedTaskIds.length === 1 ? "task is" : "tasks are"} locked
+                  in your plan
                 </div>
               </div>
             )}
-            
+
             {/* Search Bar */}
             <div className="mb-3">
               <input
@@ -696,63 +828,105 @@ function PlanEditorPageContent() {
                 className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-700"
               />
             </div>
-            
+
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 max-h-[calc(100vh-280px)] overflow-y-auto">
               {(() => {
                 // Filter tasks based on search
-                const filterTasksRecursively = (task: TaskWithProject): boolean => {
-                  if (!taskSearch.trim()) return true
-                  const searchLower = taskSearch.toLowerCase()
-                  const matchesTitle = task.title?.toLowerCase().includes(searchLower) ?? false
-                  const matchesDescription = task.description?.toLowerCase().includes(searchLower) ?? false
-                  const hasMatchingSubtask = task.subtasks?.some(st => filterTasksRecursively(st as TaskWithProject)) ?? false
-                  return matchesTitle || matchesDescription || hasMatchingSubtask
-                }
-                
+                const filterTasksRecursively = (
+                  task: TaskWithProject
+                ): boolean => {
+                  if (!taskSearch.trim()) return true;
+                  const searchLower = taskSearch.toLowerCase();
+                  const matchesTitle =
+                    task.title?.toLowerCase().includes(searchLower) ?? false;
+                  const matchesDescription =
+                    task.description?.toLowerCase().includes(searchLower) ??
+                    false;
+                  const hasMatchingSubtask =
+                    task.subtasks?.some((st) =>
+                      filterTasksRecursively(st as TaskWithProject)
+                    ) ?? false;
+                  return (
+                    matchesTitle || matchesDescription || hasMatchingSubtask
+                  );
+                };
+
                 // Check if a task or any of its subtasks are available (ready and not in plan)
-                const hasAvailableTaskOrSubtask = (task: TaskWithProject): boolean => {
-                  // Check if the task itself is available
-                  const taskAvailable = task.status === 'ready' && !isTaskInPlan(task.id)
-                  
-                  // Check if any subtask is available (recursively)
-                  const hasAvailableSubtask = task.subtasks?.some(st => 
-                    hasAvailableTaskOrSubtask(st as TaskWithProject)
-                  ) || false
-                  
-                  return taskAvailable || hasAvailableSubtask
-                }
-                
+                const hasAvailableTaskOrSubtask = (
+                  task: TaskWithProject
+                ): boolean => {
+                  // If task has subtasks, check if ALL descendants are in the plan (recursively)
+                  if (task.subtasks && task.subtasks.length > 0) {
+                    // Recursively collect all leaf descendants
+                    const collectAllLeaves = (
+                      t: TaskWithProject
+                    ): TaskWithProject[] => {
+                      if (!t.subtasks || t.subtasks.length === 0) {
+                        return [t];
+                      }
+                      const leaves: TaskWithProject[] = [];
+                      for (const subtask of t.subtasks) {
+                        leaves.push(
+                          ...collectAllLeaves(subtask as TaskWithProject)
+                        );
+                      }
+                      return leaves;
+                    };
+
+                    const allLeaves = collectAllLeaves(task);
+                    const allLeavesInPlan = allLeaves.every((leaf) =>
+                      isTaskInPlan(leaf.id)
+                    );
+
+                    // If all leaf descendants are in plan, hide the parent task
+                    if (allLeavesInPlan) {
+                      return false;
+                    }
+
+                    // Otherwise, check if any descendant is available
+                    return allLeaves.some(
+                      (leaf) =>
+                        leaf.status === "incomplete" && !isTaskInPlan(leaf.id)
+                    );
+                  }
+
+                  // For leaf tasks (no subtasks), check if available
+                  const taskAvailable =
+                    task.status === "incomplete" && !isTaskInPlan(task.id);
+                  return taskAvailable;
+                };
+
                 const filteredProjects = Array.from(tasksByProject.entries())
                   .map(([projectId, tasks]) => {
-                    const filteredTasks = tasks.filter(task => 
-                      hasAvailableTaskOrSubtask(task) && 
-                      filterTasksRecursively(task)
-                    )
-                    return { projectId, tasks: filteredTasks }
+                    const filteredTasks = tasks.filter(
+                      (task) =>
+                        hasAvailableTaskOrSubtask(task) &&
+                        filterTasksRecursively(task)
+                    );
+                    return { projectId, tasks: filteredTasks };
                   })
-                  .filter(({ tasks }) => tasks.length > 0)
-                
+                  .filter(({ tasks }) => tasks.length > 0);
+
                 if (filteredProjects.length === 0) {
                   return (
                     <div className="text-center text-zinc-500 py-8">
-                      {taskSearch.trim() 
+                      {taskSearch.trim()
                         ? `No tasks match "${taskSearch}"`
-                        : 'All available tasks are in your plan'
-                      }
+                        : "All available tasks are in your plan"}
                     </div>
-                  )
+                  );
                 }
-                
+
                 return filteredProjects.map(({ projectId, tasks }) => {
-                  const project = projects.find(p => p.id === projectId)
-                  
+                  const project = projects.find((p) => p.id === projectId);
+
                   return (
                     <div key={projectId} className="mb-6 last:mb-0">
                       <h3 className="text-sm font-medium text-zinc-400 mb-2">
-                        {project?.name || 'No Project'}
+                        {project?.name || "No Project"}
                       </h3>
                       <div className="space-y-2">
-                        {tasks.map(task => (
+                        {tasks.map((task) => (
                           <HierarchicalTaskCard
                             key={task.id}
                             task={task}
@@ -764,42 +938,56 @@ function PlanEditorPageContent() {
                         ))}
                       </div>
                     </div>
-                  )
-                })
+                  );
+                });
               })()}
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-function TaskCard({ task, onRemove, category, isLocked = false, compact = false }: {
-  task: TaskWithProject
-  onRemove: () => void
-  category: 'primary' | 'secondary' | 'multitask'
-  isLocked?: boolean
-  compact?: boolean
+function TaskCard({
+  task,
+  onRemove,
+  category,
+  isLocked = false,
+  compact = false,
+}: {
+  task: TaskWithProject;
+  onRemove: () => void;
+  category: "primary" | "secondary" | "multitask";
+  isLocked?: boolean;
+  compact?: boolean;
 }) {
-  if (!task) return null
+  if (!task) return null;
 
   if (compact) {
     return (
-      <div className={`border rounded p-2 group ${
-        isLocked 
-          ? 'bg-green-900/20 border-green-700/50' 
-          : 'bg-zinc-800 border-zinc-700'
-      }`}>
+      <div
+        className={`border rounded p-2 group ${
+          isLocked
+            ? "bg-green-900/20 border-green-700/50"
+            : "bg-zinc-800 border-zinc-700"
+        }`}
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
-              <div className={`text-sm font-medium truncate ${isLocked ? 'line-through text-zinc-500' : ''}`}>
+              <div
+                className={`text-sm font-medium truncate ${
+                  isLocked ? "line-through text-zinc-500" : ""
+                }`}
+              >
                 {task.title}
               </div>
               {isLocked && <span className="text-xs">✓</span>}
             </div>
-            <div className="text-xs text-zinc-400">{task.estimated_effort}m</div>
+            <div className="text-xs text-zinc-400">
+              {task.estimated_effort}m
+            </div>
           </div>
           {!isLocked && (
             <button
@@ -814,19 +1002,25 @@ function TaskCard({ task, onRemove, category, isLocked = false, compact = false 
           )}
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className={`border rounded-lg p-4 group ${
-      isLocked 
-        ? 'bg-green-900/20 border-green-700/50' 
-        : 'bg-zinc-800 border-zinc-700'
-    }`}>
+    <div
+      className={`border rounded-lg p-4 group ${
+        isLocked
+          ? "bg-green-900/20 border-green-700/50"
+          : "bg-zinc-800 border-zinc-700"
+      }`}
+    >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className={`font-medium ${isLocked ? 'line-through text-zinc-500' : ''}`}>
+            <h3
+              className={`font-medium ${
+                isLocked ? "line-through text-zinc-500" : ""
+              }`}
+            >
               {task.title}
             </h3>
             {isLocked && (
@@ -836,7 +1030,9 @@ function TaskCard({ task, onRemove, category, isLocked = false, compact = false 
             )}
           </div>
           {task.description && (
-            <p className="text-xs text-zinc-400 line-clamp-2">{task.description}</p>
+            <p className="text-xs text-zinc-400 line-clamp-2">
+              {task.description}
+            </p>
           )}
         </div>
         {!isLocked && (
@@ -861,7 +1057,8 @@ function TaskCard({ task, onRemove, category, isLocked = false, compact = false 
       </div>
       {task.dependencies && task.dependencies.length > 0 && (
         <div className="mt-2 text-xs text-yellow-400">
-          ⚠️ Has {task.dependencies.length} incomplete {task.dependencies.length === 1 ? 'dependency' : 'dependencies'}
+          ⚠️ Has {task.dependencies.length} incomplete{" "}
+          {task.dependencies.length === 1 ? "dependency" : "dependencies"}
         </div>
       )}
       {isLocked && (
@@ -870,16 +1067,19 @@ function TaskCard({ task, onRemove, category, isLocked = false, compact = false 
         </div>
       )}
     </div>
-  )
+  );
 }
 
-function AvailableTaskCard({ task, onAddPrimary, onAddSecondary, onAddMultitask }: {
-  task: TaskWithProject
-  onAddPrimary: () => void
-  onAddSecondary: () => void
-  onAddMultitask: () => void
+function AvailableTaskCard({
+  task,
+  onAddPrimary,
+  onAddSecondary,
+}: {
+  task: TaskWithProject;
+  onAddPrimary: () => void;
+  onAddSecondary: () => void;
 }) {
-  const [showActions, setShowActions] = useState(false)
+  const [showActions, setShowActions] = useState(false);
 
   return (
     <div
@@ -889,13 +1089,13 @@ function AvailableTaskCard({ task, onAddPrimary, onAddSecondary, onAddMultitask 
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium line-clamp-1">{task.title}</div>
+          <div className="text-sm font-medium break-words">{task.title}</div>
           <div className="text-xs text-zinc-400">
             {task.estimated_effort}m • {task.energy_cost} • {task.focus_depth}
           </div>
         </div>
       </div>
-      
+
       {showActions && (
         <div className="flex gap-1 mt-2">
           <button
@@ -908,71 +1108,145 @@ function AvailableTaskCard({ task, onAddPrimary, onAddSecondary, onAddMultitask 
           <button
             onClick={onAddSecondary}
             className="flex-1 px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-xs rounded transition-colors"
-            title="Add as secondary task"
+            title={
+              task.multitask_safe
+                ? "Add to multitask section (multitask-safe)"
+                : "Add to secondary tasks"
+            }
           >
             Secondary
           </button>
-          {task.multitask_safe && (
-            <button
-              onClick={onAddMultitask}
-              className="flex-1 px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-xs rounded transition-colors"
-              title="Add as multitask"
-            >
-              Multi
-            </button>
-          )}
         </div>
       )}
-      
+
       {task.dependencies && task.dependencies.length > 0 && (
         <div className="mt-2 text-xs text-yellow-400">
-          ⚠️ {task.dependencies.length} incomplete {task.dependencies.length === 1 ? 'dependency' : 'dependencies'}
+          ⚠️ {task.dependencies.length} incomplete{" "}
+          {task.dependencies.length === 1 ? "dependency" : "dependencies"}
         </div>
       )}
     </div>
-  )
+  );
 }
 
-function HierarchicalTaskCard({ task, depth, searchTerm, isTaskInPlan, addTaskToPlan }: {
-  task: TaskWithProject
-  depth: number
-  searchTerm: string
-  isTaskInPlan: (taskId: string) => boolean
-  addTaskToPlan: (taskId: string, category: 'primary' | 'secondary' | 'multitask') => void
+function HierarchicalTaskCard({
+  task,
+  depth,
+  searchTerm,
+  isTaskInPlan,
+  addTaskToPlan,
+}: {
+  task: TaskWithProject;
+  depth: number;
+  searchTerm: string;
+  isTaskInPlan: (taskId: string) => boolean;
+  addTaskToPlan: (
+    taskId: string,
+    category: "primary" | "secondary" | "multitask"
+  ) => void;
 }) {
-  const [showActions, setShowActions] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const hasSubtasks = task.subtasks && task.subtasks.length > 0
-  const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 12)}` : ''
-  
+  const [showActions, setShowActions] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [manuallyToggled, setManuallyToggled] = useState(false);
+  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 12)}` : "";
+
   // Filter subtasks recursively based on search
   const filterSubtask = (st: any): boolean => {
-    if (!searchTerm.trim()) return true
-    const searchLower = searchTerm.toLowerCase()
-    const matchesTitle = st.title?.toLowerCase().includes(searchLower)
-    const matchesDescription = st.description?.toLowerCase().includes(searchLower)
-    const hasMatchingChild = st.subtasks?.some(filterSubtask)
-    return matchesTitle || matchesDescription || hasMatchingChild
-  }
-  
-  const visibleSubtasks = hasSubtasks 
-    ? task.subtasks!.filter(st => {
-        const subtask = st as any
-        const isReady = subtask.status === 'ready'
-        const matchesFilter = filterSubtask(st)
-        const notInPlan = !isTaskInPlan(subtask.id)
-        
-        return isReady && matchesFilter && notInPlan
+    if (!searchTerm.trim()) return true;
+    const searchLower = searchTerm.toLowerCase();
+    const matchesTitle = st.title?.toLowerCase().includes(searchLower);
+    const matchesDescription = st.description
+      ?.toLowerCase()
+      .includes(searchLower);
+    const hasMatchingChild = st.subtasks?.some(filterSubtask);
+    return matchesTitle || matchesDescription || hasMatchingChild;
+  };
+
+  // Helper to check if a subtask should be visible (has available work)
+  const hasAvailableWork = (t: TaskWithProject): boolean => {
+    // If subtask has children, check if ALL descendants are in the plan
+    if (t.subtasks && t.subtasks.length > 0) {
+      const collectAllLeaves = (task: TaskWithProject): TaskWithProject[] => {
+        if (!task.subtasks || task.subtasks.length === 0) {
+          return [task];
+        }
+        const leaves: TaskWithProject[] = [];
+        for (const subtask of task.subtasks) {
+          leaves.push(...collectAllLeaves(subtask as TaskWithProject));
+        }
+        return leaves;
+      };
+
+      const allLeaves = collectAllLeaves(t);
+      // If all leaves are complete or in plan, hide this subtask
+      const allLeavesInPlanOrComplete = allLeaves.every(
+        (leaf) => leaf.status === "complete" || isTaskInPlan(leaf.id)
+      );
+
+      return !allLeavesInPlanOrComplete;
+    }
+
+    // For leaf tasks, visible if incomplete and not in plan
+    return t.status === "incomplete" && !isTaskInPlan(t.id);
+  };
+
+  const visibleSubtasks = hasSubtasks
+    ? task.subtasks!.filter((st) => {
+        const subtask = st as TaskWithProject;
+        const matchesFilter = filterSubtask(st);
+        const hasWork = hasAvailableWork(subtask);
+
+        return matchesFilter && hasWork;
       })
-    : []
-  
-  const inPlan = isTaskInPlan(task.id)
-  
+    : [];
+
+  const inPlan = isTaskInPlan(task.id);
+
+  // Count total incomplete leaf descendants if this is a parent task
+  const countLeafDescendants = (t: TaskWithProject): number => {
+    if (!t.subtasks || t.subtasks.length === 0) {
+      // Only count if incomplete and not in plan
+      return t.status === "incomplete" && !isTaskInPlan(t.id) ? 1 : 0;
+    }
+    return t.subtasks.reduce(
+      (sum, st) => sum + countLeafDescendants(st as TaskWithProject),
+      0
+    );
+  };
+
+  const leafCount = hasSubtasks ? countLeafDescendants(task) : 0;
+
+  // Auto-expand when search matches subtasks, auto-collapse when search is cleared
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      // If there's a search term and we have visible subtasks, auto-expand
+      if (visibleSubtasks.length > 0 && !manuallyToggled) {
+        setIsExpanded(true);
+      }
+    } else {
+      // When search is cleared, collapse (unless manually toggled)
+      if (!manuallyToggled) {
+        setIsExpanded(false);
+      }
+    }
+  }, [searchTerm, visibleSubtasks.length, manuallyToggled]);
+
+  // Reset manual toggle when search term changes
+  useEffect(() => {
+    setManuallyToggled(false);
+  }, [searchTerm]);
+
+  const handleToggleExpand = () => {
+    setIsExpanded(!isExpanded);
+    setManuallyToggled(true);
+  };
+
   return (
     <>
       <div
         className={`bg-zinc-800 border border-zinc-700 rounded p-3 transition-colors ${
-          inPlan ? 'opacity-50' : 'cursor-pointer hover:border-zinc-600'
+          inPlan ? "opacity-50" : "cursor-pointer hover:border-zinc-600"
         } ${indentClass}`}
         onMouseEnter={() => !inPlan && setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
@@ -980,63 +1254,86 @@ function HierarchicalTaskCard({ task, depth, searchTerm, isTaskInPlan, addTaskTo
         <div className="flex items-start gap-2">
           {hasSubtasks && visibleSubtasks.length > 0 && (
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={handleToggleExpand}
               className="text-zinc-500 hover:text-zinc-300 mt-1"
             >
-              {isExpanded ? '▼' : '▶'}
+              {isExpanded ? "▼" : "▶"}
             </button>
           )}
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium line-clamp-1 ${inPlan ? 'text-zinc-500' : ''}`}>
+                <div
+                  className={`text-sm font-medium break-words ${
+                    inPlan ? "text-zinc-500" : ""
+                  }`}
+                >
                   {task.title}
-                  {inPlan && <span className="ml-2 text-xs text-zinc-600">(in plan)</span>}
+                  {inPlan && (
+                    <span className="ml-2 text-xs text-zinc-600">
+                      (in plan)
+                    </span>
+                  )}
+                  {hasSubtasks && visibleSubtasks.length > 0 && !inPlan && (
+                    <span
+                      className="ml-2 text-xs text-blue-400"
+                      title="Clicking will add all leaf subtasks"
+                    >
+                      (adds {leafCount} task{leafCount > 1 ? "s" : ""})
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-zinc-400">
-                  {task.estimated_effort}m • {task.energy_cost} • {task.focus_depth}
+                  {task.estimated_effort}m • {task.energy_cost} •{" "}
+                  {task.focus_depth}
                 </div>
               </div>
             </div>
-            
+
             {!inPlan && showActions && (
               <div className="flex gap-1 mt-2">
                 <button
-                  onClick={() => addTaskToPlan(task.id, 'primary')}
+                  onClick={() => addTaskToPlan(task.id, "primary")}
                   className="flex-1 px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-xs rounded transition-colors"
-                  title="Add as primary focus"
+                  title={
+                    hasSubtasks && visibleSubtasks.length > 0
+                      ? `Add all ${leafCount} subtask${
+                          leafCount > 1 ? "s" : ""
+                        } (first as primary, rest auto-sorted)`
+                      : "Add as primary focus"
+                  }
                 >
                   Primary
                 </button>
                 <button
-                  onClick={() => addTaskToPlan(task.id, 'secondary')}
+                  onClick={() => addTaskToPlan(task.id, "secondary")}
                   className="flex-1 px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-xs rounded transition-colors"
-                  title="Add as secondary task"
+                  title={
+                    hasSubtasks && visibleSubtasks.length > 0
+                      ? `Add all ${leafCount} subtask${
+                          leafCount > 1 ? "s" : ""
+                        } (auto-sorted by multitask-safe)`
+                      : task.multitask_safe
+                      ? "Add to multitask section (multitask-safe)"
+                      : "Add to secondary tasks"
+                  }
                 >
                   Secondary
                 </button>
-                {task.multitask_safe && (
-                  <button
-                    onClick={() => addTaskToPlan(task.id, 'multitask')}
-                    className="flex-1 px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-xs rounded transition-colors"
-                    title="Add as multitask"
-                  >
-                    Multi
-                  </button>
-                )}
               </div>
             )}
-            
+
             {task.dependencies && task.dependencies.length > 0 && (
               <div className="mt-2 text-xs text-yellow-400">
-                ⚠️ {task.dependencies.length} incomplete {task.dependencies.length === 1 ? 'dependency' : 'dependencies'}
+                ⚠️ {task.dependencies.length} incomplete{" "}
+                {task.dependencies.length === 1 ? "dependency" : "dependencies"}
               </div>
             )}
           </div>
         </div>
       </div>
-      
+
       {/* Nested subtasks */}
       {isExpanded && visibleSubtasks.length > 0 && (
         <div className="mt-1 space-y-1 ml-4 border-l-2 border-zinc-800 pl-2">
@@ -1053,18 +1350,5 @@ function HierarchicalTaskCard({ task, depth, searchTerm, isTaskInPlan, addTaskTo
         </div>
       )}
     </>
-  )
+  );
 }
-
-export default function PlanEditorPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-zinc-400">Loading plan editor...</div>
-      </div>
-    }>
-      <PlanEditorPageContent />
-    </Suspense>
-  )
-}
-

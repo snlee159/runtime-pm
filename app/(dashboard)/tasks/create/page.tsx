@@ -266,10 +266,10 @@ export default function CreateTaskPage() {
     // Load all existing tasks (parent tasks only, no subtasks)
     const { data: tasks } = await supabase
       .from('tasks')
-      .select('*')
+      .select('id, title, description, project_id, status')
       .eq('user_id', user.id)
       .is('parent_task_id', null)
-      .in('status', ['ready', 'scheduled', 'in_progress'])
+      .in('status', ['incomplete', 'complete'])
       .order('created_at', { ascending: false })
     
     setExistingTasks(tasks || [])
@@ -292,7 +292,7 @@ export default function CreateTaskPage() {
         body: JSON.stringify({
           title,
           description,
-          project_id: projectId || undefined,
+          project_id: projectId || null,
         }),
       })
 
@@ -411,7 +411,7 @@ export default function CreateTaskPage() {
         .from('tasks')
         .insert({
           user_id: user.id,
-          project_id: projectId || undefined,
+          project_id: projectId || null,
           title,
           description: description || null,
           estimated_effort: estimatedEffort,
@@ -419,7 +419,7 @@ export default function CreateTaskPage() {
           focus_depth: focusDepth,
           context_type: contextType,
           multitask_safe: multitaskSafe,
-          status: 'ready',
+          status: 'incomplete',
           ai_generated: subtasks.length > 0,
           ai_metadata: aiReasoning ? { reasoning: aiReasoning } : null,
         })
@@ -442,7 +442,7 @@ export default function CreateTaskPage() {
           const subtaskInserts = tasks.map(st => ({
             user_id: user.id,
             parent_task_id: parentId,
-            project_id: projectId || undefined,
+            project_id: projectId || null,
             title: st.title,
             description: st.description || null,
             estimated_effort: st.estimated_effort,
@@ -450,7 +450,7 @@ export default function CreateTaskPage() {
             focus_depth: st.focus_depth,
             context_type: st.context_type,
             multitask_safe: st.multitask_safe,
-            status: 'ready',
+            status: 'incomplete',
             display_order: st.display_order,
             depth_level: depth,
             ai_generated: true,
