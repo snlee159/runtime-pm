@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { TasksList } from './tasks-list'
 import Link from 'next/link'
-import { Suspense } from 'react'
 
 export default async function TasksPage() {
   const supabase = await createClient()
@@ -12,13 +11,13 @@ export default async function TasksPage() {
     redirect('/auth/login')
   }
 
-  // Get parent tasks (no parent_task_id) with their subtasks, including completed
+  // Get parent tasks (no parent_task_id) with their subtasks, including complete
   const { data: tasks } = await supabase
     .from('tasks')
     .select('*, project:projects(*)')
     .eq('user_id', user.id)
     .is('parent_task_id', null)
-    .in('status', ['ready', 'scheduled', 'in_progress', 'completed'])
+    .in('status', ['incomplete', 'complete'])
     .order('created_at', { ascending: false })
 
   // Recursively load all nested subtasks
@@ -29,7 +28,7 @@ export default async function TasksPage() {
       .from('tasks')
       .select('*')
       .in('parent_task_id', parentIds)
-      .in('status', ['ready', 'scheduled', 'in_progress', 'completed'])
+      .in('status', ['incomplete', 'complete'])
       .order('display_order', { ascending: true })
     
     if (!subtasks || subtasks.length === 0) return []
@@ -99,13 +98,7 @@ export default async function TasksPage() {
         <p className="text-zinc-400">Organize your work by project</p>
       </div>
 
-      <Suspense fallback={
-        <div className="flex items-center justify-center py-12">
-          <div className="text-zinc-400">Loading tasks...</div>
-        </div>
-      }>
-        <TasksList initialTasks={tasksWithSubtasks} projects={projects || []} />
-      </Suspense>
+      <TasksList initialTasks={tasksWithSubtasks} projects={projects || []} />
     </div>
   )
 }

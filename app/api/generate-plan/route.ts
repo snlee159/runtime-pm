@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
     constraints: checkIn.constraints ? 'Yes' : 'No'
   })
 
-  // Get all tasks (ready and completed) with dependencies
+  // Get all tasks (incomplete and complete) with dependencies
   console.log('🔍 Fetching tasks...')
   const { data: tasks, error: tasksError } = await supabase
     .from('tasks')
     .select('*')
     .eq('user_id', user.id)
-    .in('status', ['ready', 'completed'])
+    .in('status', ['incomplete', 'complete'])
 
   if (tasksError) {
     console.error('❌ Failed to fetch tasks:', tasksError)
@@ -74,11 +74,11 @@ export async function POST(request: NextRequest) {
 
   console.log('✅ Tasks with dependencies loaded:', tasksWithDependencies.length)
 
-  const readyTasks = tasksWithDependencies.filter(t => t.status === 'ready')
-  console.log('✅ Ready tasks:', readyTasks.length, 'of', tasksWithDependencies.length, 'total')
-  if (readyTasks.length > 0) {
+  const incompleteTasks = tasksWithDependencies.filter(t => t.status === 'incomplete')
+  console.log('✅ Incomplete tasks:', incompleteTasks.length, 'of', tasksWithDependencies.length, 'total')
+  if (incompleteTasks.length > 0) {
     console.log('📋 Task details:')
-    readyTasks.forEach((task, i) => {
+    incompleteTasks.forEach((task, i) => {
       const depCount = task.dependencies?.length || 0
       console.log(`   ${i + 1}. "${task.title}" - ${task.estimated_effort}m, ${task.energy_cost} energy, ${task.focus_depth} focus${depCount > 0 ? ` (${depCount} deps)` : ''}`)
     })

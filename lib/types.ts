@@ -4,9 +4,8 @@ export type EnergyLevel = 'very_low' | 'low' | 'medium' | 'high' | 'very_high'
 export type EnergyCost = 'low' | 'medium' | 'high'
 export type FocusDepth = 'deep' | 'shallow'
 export type ContextType = 'cognitive' | 'admin' | 'physical'
-export type TaskStatus = 'ready' | 'scheduled' | 'in_progress' | 'completed' | 'deferred' | 'dropped'
+export type TaskStatus = 'incomplete' | 'complete'
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived'
-export type DroppedReason = 'planning_error' | 'energy' | 'interruption' | 'no_longer_relevant'
 export type PaceAssessment = 'over_scoping' | 'under_scoping' | 'balanced'
 
 export interface Project {
@@ -39,7 +38,6 @@ export interface Task {
   // Status
   status: TaskStatus
   completed_at?: string
-  dropped_reason?: DroppedReason
   
   // Hierarchy
   display_order: number

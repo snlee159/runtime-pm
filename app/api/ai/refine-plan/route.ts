@@ -67,7 +67,7 @@ Based on the user's instruction, suggest modifications to their plan. You can:
 - Adjust priorities and reasoning
 
 LOCKED TASKS (cannot be removed or modified):
-${lockedTaskIds.length > 0 ? lockedTaskIds.map((id: string) => {
+${lockedTaskIds.length > 0 ? lockedTaskIds.map(id => {
   const task = availableTasks.find((t: any) => t.id === id)
   return task ? `- ${task.title} (${task.id})` : ''
 }).join('\n') : 'None'}
@@ -184,7 +184,7 @@ function formatAvailableTasks(allTasks: any[], currentPlan: any, lockedTaskIds: 
   const available = allTasks.filter(t => 
     !currentTaskIds.includes(t.id) && 
     !lockedTaskIds.includes(t.id) &&
-    t.status === 'ready'
+    t.status === 'incomplete'
   )
   
   if (available.length === 0) {

@@ -31,9 +31,8 @@ CREATE TABLE tasks (
   multitask_safe BOOLEAN DEFAULT false,
   
   -- Status tracking
-  status TEXT NOT NULL DEFAULT 'ready', -- ready, scheduled, in_progress, completed, deferred, dropped
-  completed_at TIMESTAMPTZ,
-  dropped_reason TEXT, -- planning_error, energy, interruption, no_longer_relevant
+  status TEXT NOT NULL DEFAULT 'incomplete', -- incomplete, complete
+  completed_at TIMESTAMPTZ
   
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
