@@ -188,7 +188,9 @@ export default function ProfilePage() {
                   autoResize(e.target);
                 }}
                 onInput={(e) => autoResize(e.target as HTMLTextAreaElement)}
-                ref={(el) => el && autoResize(el)}
+                ref={(el) => {
+                  if (el) autoResize(el);
+                }}
                 className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zinc-600 resize-none overflow-hidden"
                 style={{ minHeight: "60px" }}
               />
@@ -249,7 +251,9 @@ export default function ProfilePage() {
                   autoResize(e.target);
                 }}
                 onInput={(e) => autoResize(e.target as HTMLTextAreaElement)}
-                ref={(el) => el && autoResize(el)}
+                ref={(el) => {
+                  if (el) autoResize(el);
+                }}
                 className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zinc-600 resize-none overflow-hidden"
                 style={{ minHeight: "80px" }}
               />
@@ -266,7 +270,9 @@ export default function ProfilePage() {
                   autoResize(e.target);
                 }}
                 onInput={(e) => autoResize(e.target as HTMLTextAreaElement)}
-                ref={(el) => el && autoResize(el)}
+                ref={(el) => {
+                  if (el) autoResize(el);
+                }}
                 className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zinc-600 resize-none overflow-hidden"
                 style={{ minHeight: "60px" }}
               />
@@ -283,7 +289,9 @@ export default function ProfilePage() {
                   autoResize(e.target);
                 }}
                 onInput={(e) => autoResize(e.target as HTMLTextAreaElement)}
-                ref={(el) => el && autoResize(el)}
+                ref={(el) => {
+                  if (el) autoResize(el);
+                }}
                 className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zinc-600 resize-none overflow-hidden"
                 style={{ minHeight: "60px" }}
               />
