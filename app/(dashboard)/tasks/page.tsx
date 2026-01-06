@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { TasksList } from "./tasks-list";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export default async function TasksPage() {
   const supabase = await createClient();
@@ -105,7 +106,9 @@ export default async function TasksPage() {
         <p className="text-zinc-400">Organize your work by project</p>
       </div>
 
-      <TasksList initialTasks={tasksWithSubtasks} projects={projects || []} />
+      <Suspense fallback={<div className="text-zinc-400">Loading tasks...</div>}>
+        <TasksList initialTasks={tasksWithSubtasks} projects={projects || []} />
+      </Suspense>
     </div>
   );
 }

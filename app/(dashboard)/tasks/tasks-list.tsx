@@ -226,7 +226,7 @@ function ParentTaskEditForm({
                 {
                   title,
                   description,
-                  project_id: projectId || null,
+                  project_id: projectId || undefined,
                   estimated_effort: parseInt(estimatedEffort),
                   energy_cost: energyCost,
                   focus_depth: focusDepth,
@@ -1146,7 +1146,7 @@ export function TasksList({
         body: JSON.stringify({
           title,
           description,
-          project_id: projectId || null,
+          project_id: projectId || undefined,
         }),
       });
 
@@ -1202,8 +1202,8 @@ export function TasksList({
         .insert({
           user_id: user.id,
           title,
-          description: description || null,
-          project_id: projectId || null,
+          description: description || undefined,
+          project_id: projectId || undefined,
           estimated_effort: parseInt(estimatedEffort),
           energy_cost: energyCost,
           focus_depth: focusDepth,
@@ -1242,9 +1242,9 @@ export function TasksList({
           const subtaskInserts = validSubtasks.map((st, index) => ({
             user_id: user.id,
             parent_task_id: parentId,
-            project_id: projectId || null,
+            project_id: projectId || undefined,
             title: st.title,
-            description: st.description || null,
+            description: st.description || undefined,
             estimated_effort: st.estimated_effort,
             energy_cost: st.energy_cost,
             focus_depth: st.focus_depth,
@@ -1386,7 +1386,7 @@ export function TasksList({
       .insert({
         user_id: user.id,
         name: projectName,
-        description: projectDescription || null,
+        description: projectDescription || undefined,
         color: projectColor,
         status: "active",
         display_order: maxOrder + 1,

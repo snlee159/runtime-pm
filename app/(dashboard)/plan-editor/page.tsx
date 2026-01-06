@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Task, DailyPlan, DailyCheckIn, Project } from "@/lib/types";
 import Link from "next/link";
+
+export const dynamic = 'force-dynamic';
 
 interface TaskWithProject extends Task {
   project?: Project;
@@ -16,7 +18,7 @@ interface PlanState {
   multitaskTaskIds: string[];
 }
 
-export default function PlanEditorPage() {
+function PlanEditorPageContent() {
   const [checkIn, setCheckIn] = useState<DailyCheckIn | null>(null);
   const [suggestedPlan, setSuggestedPlan] = useState<any>(null);
   const [allTasks, setAllTasks] = useState<TaskWithProject[]>([]);
@@ -1350,5 +1352,17 @@ function HierarchicalTaskCard({
         </div>
       )}
     </>
+  );
+}
+
+export default function PlanEditorPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-zinc-400">Loading plan editor...</div>
+      </div>
+    }>
+      <PlanEditorPageContent />
+    </Suspense>
   );
 }

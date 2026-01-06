@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { getLocalDateString } from "@/lib/date-utils";
 
@@ -8,7 +8,7 @@ import { getLocalDateString } from "@/lib/date-utils";
  * Client component that ensures the URL always has the user's local date
  * This fixes timezone issues where server (UTC) and client (local) have different dates
  */
-export function ClientDateProvider({
+function ClientDateProviderContent({
   children,
 }: {
   children: React.ReactNode;
@@ -44,4 +44,16 @@ export function ClientDateProvider({
   }
 
   return <>{children}</>;
+}
+
+export function ClientDateProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={<>{children}</>}>
+      <ClientDateProviderContent>{children}</ClientDateProviderContent>
+    </Suspense>
+  );
 }
