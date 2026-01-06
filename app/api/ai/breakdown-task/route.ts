@@ -31,8 +31,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Get user profile for personalized breakdown
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('role, work_style, typical_work_hours, preferred_task_duration, tools_used, primary_goals')
+      .eq('user_id', user.id)
+      .single()
+
+    // Prepare user context for AI
+    const userContext = userProfile ? {
+      role: userProfile.role,
+      work_style: userProfile.work_style,
+      typical_work_hours: userProfile.typical_work_hours,
+      preferred_task_duration: userProfile.preferred_task_duration,
+      tools_used: userProfile.tools_used,
+      primary_goals: userProfile.primary_goals,
+    } : undefined
+
     // Break down task with AI
-    const breakdown = await breakdownTask(title, description, projectContext)
+    const breakdown = await breakdownTask(title, description, projectContext, userContext)
 
     return NextResponse.json({ breakdown })
   } catch (error: any) {

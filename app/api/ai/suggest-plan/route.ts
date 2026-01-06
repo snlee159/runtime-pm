@@ -20,6 +20,24 @@ export async function POST(request: NextRequest) {
   const { date } = await request.json()
   console.log('📆 Date:', date)
 
+  // Get user profile for personalized planning
+  console.log('🔍 Fetching user profile...')
+  const { data: userProfile } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('user_id', user.id)
+    .single()
+
+  if (userProfile) {
+    console.log('✅ User profile loaded:', {
+      name: userProfile.full_name,
+      role: userProfile.role,
+      planningStyle: userProfile.planning_style
+    })
+  } else {
+    console.log('⚠️  No user profile found - using defaults')
+  }
+
   // Get check-in for the date
   console.log('🔍 Fetching check-in...')
   const { data: checkIn, error: checkInError } = await supabase
@@ -93,6 +111,7 @@ export async function POST(request: NextRequest) {
     planSuggestion = generateDailyPlan({
       tasks: tasksWithDependencies,
       checkIn,
+      userProfile: userProfile || undefined,
     })
     console.log('✅ Plan suggestion generated successfully')
     console.log('📊 Suggestion details:', {

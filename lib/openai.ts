@@ -48,13 +48,37 @@ export interface TaskBreakdown {
 export async function analyzeTask(
   title: string,
   description?: string,
-  projectContext?: string
+  projectContext?: string,
+  userContext?: {
+    role?: string;
+    work_style?: string;
+    typical_work_hours?: number;
+    preferred_task_duration?: number;
+    tools_used?: string;
+    primary_goals?: string;
+  }
 ): Promise<TaskAnalysis> {
+  const userContextSection = userContext ? `
+
+User Context (consider this when estimating):
+- Role: ${userContext.role}
+- Work Style: ${userContext.work_style}
+- Typical Work Hours: ${userContext.typical_work_hours}h/day
+- Preferred Task Duration: ${userContext.preferred_task_duration} minutes
+${userContext.tools_used ? `- Tools Used: ${userContext.tools_used}` : ""}
+${userContext.primary_goals ? `- Goals: ${userContext.primary_goals}` : ""}
+
+⚠️ Adjust your time estimates based on:
+- User's experience level (implied by role and tools)
+- Typical work patterns and preferences
+- If task aligns with their goals and tools, they may be faster
+- If task is outside their usual domain, add buffer time` : "";
+
   const prompt = `You are an execution planning assistant. Analyze this task and provide execution metadata.
 
 Task: ${title}
 ${description ? `Description: ${description}` : ""}
-${projectContext ? `Project Context: ${projectContext}` : ""}
+${projectContext ? `Project Context: ${projectContext}` : ""}${userContextSection}
 
 Provide a JSON response with:
 - estimated_effort: INTEGER in MINUTES (NOT HOURS). Examples: 15, 30, 45, 60, 90. For a 2-hour task, return 120 minutes.
@@ -100,13 +124,37 @@ Return ONLY valid JSON, no markdown formatting.`;
 export async function breakdownTask(
   title: string,
   description?: string,
-  projectContext?: string
+  projectContext?: string,
+  userContext?: {
+    role?: string;
+    work_style?: string;
+    typical_work_hours?: number;
+    preferred_task_duration?: number;
+    tools_used?: string;
+    primary_goals?: string;
+  }
 ): Promise<TaskBreakdown> {
+  const userContextSection = userContext ? `
+
+User Context (tailor your breakdown to this person):
+- Role: ${userContext.role}
+- Work Style: ${userContext.work_style}
+- Typical Work Hours: ${userContext.typical_work_hours}h/day
+- Preferred Task Duration: ${userContext.preferred_task_duration} minutes
+${userContext.tools_used ? `- Tools/Technologies: ${userContext.tools_used}` : ""}
+${userContext.primary_goals ? `- Current Goals: ${userContext.primary_goals}` : ""}
+
+⚠️ Tailor subtasks to this user:
+- Break tasks into chunks matching their preferred duration (${userContext.preferred_task_duration} min)
+- Adjust complexity based on their role and tool expertise
+- Use terminology appropriate for their background
+- Consider their typical work capacity (${userContext.typical_work_hours}h/day)` : "";
+
   const prompt = `You are a senior product manager breaking down work for an engineer. Be explicit, detailed, and prescriptive.
 
 Task: ${title}
 ${description ? `Description: ${description}` : ""}
-${projectContext ? `Project Context: ${projectContext}` : ""}
+${projectContext ? `Project Context: ${projectContext}` : ""}${userContextSection}
 
 ⚠️ CRITICAL: ASSESS COMPLEXITY FIRST ⚠️
 

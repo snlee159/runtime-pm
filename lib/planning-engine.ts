@@ -4,6 +4,7 @@ import {
   DailyPlan,
   EnergyLevel,
   EnergyCost,
+  UserProfile,
 } from "./types";
 
 /**
@@ -25,6 +26,7 @@ import {
 interface PlanningInput {
   tasks: Task[];
   checkIn: DailyCheckIn;
+  userProfile?: UserProfile;
 }
 
 interface PlanningOutput {
@@ -87,7 +89,7 @@ function filterTasksByDependencies(tasks: Task[]): Task[] {
  */
 export function generateDailyPlan(input: PlanningInput): PlanningOutput {
   console.log("🎯 Planning Engine: Starting");
-  const { tasks, checkIn } = input;
+  const { tasks, checkIn, userProfile } = input;
   const availableMinutes = checkIn.available_hours * 60;
   const energyScore = ENERGY_SCORES[checkIn.energy_level];
   const userPriorities = checkIn.priorities?.toLowerCase() || "";
@@ -98,6 +100,14 @@ export function generateDailyPlan(input: PlanningInput): PlanningOutput {
   console.log("   User priorities:", userPriorities ? "Yes" : "No");
   console.log("   User constraints:", userConstraints ? "Yes" : "No");
   console.log("   Total tasks to consider:", tasks.length);
+  if (userProfile) {
+    console.log("   User profile loaded:", {
+      role: userProfile.role,
+      planningStyle: userProfile.planning_style,
+      peakEnergy: userProfile.peak_energy_time,
+      contextTolerance: userProfile.context_switch_tolerance
+    });
+  }
 
   // Filter out tasks whose dependencies are not yet completed
   console.log("   Filtering for tasks with completed dependencies...");
@@ -165,13 +175,14 @@ export function generateDailyPlan(input: PlanningInput): PlanningOutput {
   console.log("   Focus tasks:", focusTasks.length);
   console.log("   Multitask tasks:", multitaskTasks.length);
 
-  // Find primary focus task (considering user priorities and energy)
+  // Find primary focus task (considering user priorities, energy, and profile)
   console.log("   Selecting primary focus task...");
   const primaryTask = selectPrimaryFocus(
     focusTasks,
     energyScore,
     userPriorities,
-    checkIn.energy_level
+    checkIn.energy_level,
+    userProfile
   );
 
   if (primaryTask) {
@@ -202,7 +213,8 @@ export function generateDailyPlan(input: PlanningInput): PlanningOutput {
     remainingEnergy,
     energyScore,
     userPriorities,
-    checkIn.energy_level
+    checkIn.energy_level,
+    userProfile
   );
 
   selectedSecondaryIds.push(...secondaryTasks.map((t) => t.id));
@@ -260,13 +272,14 @@ export function generateDailyPlan(input: PlanningInput): PlanningOutput {
 /**
  * Select the primary focus task
  *
- * Priority: User priorities > Energy matching > Focus depth > Task size
+ * Priority: User priorities > Energy matching > Focus depth > Task size > User preferences
  */
 function selectPrimaryFocus(
   tasks: Task[],
   energyScore: number,
   userPriorities: string,
-  energyLevel: EnergyLevel
+  energyLevel: EnergyLevel,
+  userProfile?: UserProfile
 ): Task | null {
   if (tasks.length === 0) return null;
 
@@ -294,9 +307,34 @@ function selectPrimaryFocus(
       score += 5;
     }
 
-    // Prefer larger tasks as primary focus (for flow state)
-    if (task.estimated_effort >= 60) {
-      score += 3;
+    // User profile-based preferences
+    if (userProfile) {
+      // Task duration preference
+      const durationDiff = Math.abs(task.estimated_effort - userProfile.preferred_task_duration);
+      if (durationDiff <= 15) { // Within 15 minutes of preferred
+        score += 5;
+      }
+
+      // Planning style affects task selection
+      if (userProfile.planning_style === 'aggressive') {
+        // Favor larger tasks
+        if (task.estimated_effort >= 90) score += 4;
+      } else if (userProfile.planning_style === 'conservative') {
+        // Favor smaller, manageable tasks
+        if (task.estimated_effort <= 60) score += 4;
+      }
+
+      // Adjust for overcommitment tendency
+      if (userProfile.overcommitment_tendency === 'high') {
+        // Be more conservative, favor shorter tasks
+        if (task.estimated_effort <= 45) score += 3;
+      }
+    } else {
+      // Default behavior when no profile
+      // Prefer larger tasks as primary focus (for flow state)
+      if (task.estimated_effort >= 60) {
+        score += 3;
+      }
     }
 
     return { task, score };
@@ -326,7 +364,7 @@ function selectPrimaryFocus(
  * Select secondary tasks
  *
  * Fill remaining time without excessive context switching
- * Priority: User priorities > Lower energy cost > Shorter duration
+ * Priority: User priorities > Lower energy cost > Shorter duration > User preferences
  */
 function selectSecondaryTasks(
   tasks: Task[],
@@ -334,13 +372,33 @@ function selectSecondaryTasks(
   remainingEnergy: number,
   originalEnergy: number,
   userPriorities: string,
-  energyLevel: EnergyLevel
+  energyLevel: EnergyLevel,
+  userProfile?: UserProfile
 ): Task[] {
   const selected: Task[] = [];
   let usedMinutes = 0;
 
-  // Limit secondary tasks to avoid context switching
-  const maxSecondaryTasks = originalEnergy >= 4 ? 2 : 1;
+  // Limit secondary tasks based on user profile and energy
+  let maxSecondaryTasks = originalEnergy >= 4 ? 2 : 1;
+  
+  if (userProfile) {
+    // Adjust based on context switch tolerance
+    if (userProfile.context_switch_tolerance === 'high') {
+      maxSecondaryTasks += 1; // Can handle more tasks
+    } else if (userProfile.context_switch_tolerance === 'low') {
+      maxSecondaryTasks = Math.max(1, maxSecondaryTasks - 1); // Prefer fewer tasks
+    }
+
+    // Adjust based on multitasking comfort
+    if (userProfile.multitasking_comfort === 'low') {
+      maxSecondaryTasks = 1; // Stick to single focus
+    }
+
+    // Conservative planners should have fewer tasks
+    if (userProfile.planning_style === 'conservative') {
+      maxSecondaryTasks = Math.max(1, maxSecondaryTasks - 1);
+    }
+  }
 
   // Score and sort tasks (user priorities > lower energy > shorter duration)
   const sortedTasks = [...tasks]

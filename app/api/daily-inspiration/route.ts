@@ -129,6 +129,7 @@ Respond in JSON format:
     const inspiration = JSON.parse(content);
 
     // Store in database
+    console.log("Attempting to insert inspiration for date:", today);
     const { data: newInspiration, error: insertError } = await supabase
       .from("daily_inspirations")
       .insert({
@@ -140,8 +141,15 @@ Respond in JSON format:
       .single();
 
     if (insertError) {
+      console.error("Error inserting inspiration:", insertError);
+      console.error(
+        "Insert error details:",
+        JSON.stringify(insertError, null, 2)
+      );
+
       // If it's a duplicate key error, fetch and return the existing record
       if (insertError.code === "23505") {
+        console.log("Duplicate detected, fetching existing record...");
         const { data: existingRecord } = await supabase
           .from("daily_inspirations")
           .select("*")
@@ -149,6 +157,10 @@ Respond in JSON format:
           .single();
 
         if (existingRecord) {
+          console.log(
+            "Returning existing record after duplicate error:",
+            existingRecord.id
+          );
           const response = NextResponse.json(existingRecord);
           response.headers.set("Cache-Control", "no-store, max-age=0");
           return response;
@@ -164,11 +176,16 @@ Respond in JSON format:
       });
     }
 
+    console.log(
+      "Successfully saved inspiration to database:",
+      newInspiration.id
+    );
     const response = NextResponse.json(newInspiration);
     // Prevent caching to ensure fresh data each day
     response.headers.set("Cache-Control", "no-store, max-age=0");
     return response;
   } catch (error: any) {
+    console.error("Error generating daily inspiration:", error);
     return NextResponse.json(
       { error: error.message || "Failed to generate daily inspiration" },
       { status: 500 }

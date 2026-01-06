@@ -32,33 +32,9 @@ export default function LoginPage() {
     }
   }
 
-  const handleSignUp = async () => {
-    setLoading(true)
-    setError(null)
-    setMessage(null)
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-      }
-    })
-
-    console.log('SignUp Response:', { data, error })
-
-    if (error) {
-      console.error('SignUp Error:', error)
-      setError(error.message + ' - Try setting Site URL in Supabase Auth settings to: http://localhost:3000')
-      setLoading(false)
-    } else if (data.user && !data.session) {
-      setMessage('Check your email for confirmation link!')
-      setLoading(false)
-    } else {
-      setMessage('Account created! Logging you in...')
-      router.push('/')
-      router.refresh()
-    }
+  const handleSignUp = () => {
+    // Navigate to onboarding page for new sign-ups
+    router.push('/auth/signup')
   }
 
   return (
