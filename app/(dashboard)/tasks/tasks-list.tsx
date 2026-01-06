@@ -2316,7 +2316,7 @@ export function TasksList({
       </Modal>
 
       {/* Tasks List - Grouped by Project */}
-      {tasks.length > 0 ? (
+      {tasks.length > 0 || projects.length > 0 ? (
         <div className="space-y-4">
           {projectGroups.map(({ project, tasks: projectTasks, progress }) => {
             const isExpanded = expandedProjects.has(project.id);

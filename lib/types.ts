@@ -182,3 +182,71 @@ export interface WrapFormData {
   what_broke?: string
 }
 
+// User Profile types
+export interface UserProfile {
+  id: string
+  user_id: string
+  
+  // Basic info
+  full_name: string
+  
+  // Professional context
+  role: string
+  work_style: string
+  typical_work_hours: number
+  
+  // Goals and priorities
+  primary_goals: string
+  secondary_goals?: string
+  
+  // Work preferences
+  preferred_task_duration: number
+  deep_work_preference: 'morning' | 'afternoon' | 'evening' | 'night'
+  multitasking_comfort: 'low' | 'moderate' | 'high'
+  break_frequency: 'rarely' | 'hourly' | 'frequent'
+  
+  // Productivity patterns
+  peak_energy_time: 'morning' | 'afternoon' | 'evening'
+  low_energy_time: 'morning' | 'afternoon' | 'evening'
+  context_switch_tolerance: 'low' | 'moderate' | 'high'
+  
+  // Planning preferences
+  planning_style: 'aggressive' | 'balanced' | 'conservative'
+  overcommitment_tendency: 'low' | 'moderate' | 'high'
+  
+  // Additional context
+  current_challenges?: string
+  tools_used?: string
+  team_size?: string
+  timezone?: string
+  
+  // Onboarding
+  onboarding_completed: boolean
+  onboarding_completed_at?: string
+  
+  created_at: string
+  updated_at: string
+}
+
+export interface OnboardingFormData {
+  full_name: string
+  role: string
+  work_style: string
+  typical_work_hours: number
+  primary_goals: string
+  secondary_goals?: string
+  preferred_task_duration: number
+  deep_work_preference: 'morning' | 'afternoon' | 'evening' | 'night'
+  multitasking_comfort: 'low' | 'moderate' | 'high'
+  break_frequency: 'rarely' | 'hourly' | 'frequent'
+  peak_energy_time: 'morning' | 'afternoon' | 'evening'
+  low_energy_time: 'morning' | 'afternoon' | 'evening'
+  context_switch_tolerance: 'low' | 'moderate' | 'high'
+  planning_style: 'aggressive' | 'balanced' | 'conservative'
+  overcommitment_tendency: 'low' | 'moderate' | 'high'
+  current_challenges?: string
+  tools_used?: string
+  team_size?: string
+  timezone?: string
+}
+

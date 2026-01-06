@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Instruction is required' }, { status: 400 })
     }
 
+    // Get user profile for personalized planning
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('role, work_style, planning_style, preferred_task_duration, context_switch_tolerance, overcommitment_tendency')
+      .eq('user_id', user.id)
+      .single()
+
     // Build context for AI
     const availableMinutes = checkIn.available_hours * 60
     
@@ -46,10 +53,27 @@ export async function POST(request: NextRequest) {
     // Format available tasks
     const availableTasksText = formatAvailableTasks(availableTasks, currentPlan, lockedTaskIds)
 
+    const userContextSection = userProfile ? `
+
+USER PROFILE (consider when refining):
+- Role: ${userProfile.role}
+- Work Style: ${userProfile.work_style}
+- Planning Style: ${userProfile.planning_style}
+- Preferred Task Duration: ${userProfile.preferred_task_duration} minutes
+- Context Switch Tolerance: ${userProfile.context_switch_tolerance}
+- Overcommitment Tendency: ${userProfile.overcommitment_tendency}
+
+⚠️ Adjust plan based on profile:
+- If planning_style is "conservative", leave buffer time and don't pack the schedule
+- If planning_style is "aggressive", can fit more tasks
+- If context_switch_tolerance is "low", minimize number of different tasks
+- If overcommitment_tendency is "high", be cautious about adding too much
+- Break tasks into chunks matching preferred_task_duration when possible` : "";
+
     const prompt = `You are an AI assistant helping a user refine their daily work plan. The user has energy level "${checkIn.energy_level}" and ${checkIn.available_hours} hours (${availableMinutes} minutes) available today.
 
 ${checkIn.priorities ? `User's stated priorities: ${checkIn.priorities}` : ''}
-${checkIn.constraints ? `User's constraints: ${checkIn.constraints}` : ''}
+${checkIn.constraints ? `User's constraints: ${checkIn.constraints}` : ''}${userContextSection}
 
 CURRENT PLAN:
 ${currentPlanText}

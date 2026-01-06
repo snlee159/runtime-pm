@@ -62,12 +62,20 @@ export function Navigation() {
               })}
             </div>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="text-sm text-zinc-400 hover:text-white transition-colors cursor-pointer"
-          >
-            Sign Out
-          </button>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/profile"
+              className="text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              Profile
+            </Link>
+            <button
+              onClick={handleSignOut}
+              className="text-sm text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </nav>
