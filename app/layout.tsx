@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import "./globals.css";
 
@@ -35,7 +36,9 @@ export default function RootLayout({
             gtag('config', 'G-DSJDNC8N2G');
           `}
         </Script>
-        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
         {children}
       </body>
     </html>
