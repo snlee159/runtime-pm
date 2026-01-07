@@ -63,6 +63,12 @@ export function Navigation() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <a
+              href="mailto:contact@runtimepm.com"
+              className="text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              Help
+            </a>
             <Link
               href="/profile"
               className="text-sm text-zinc-400 hover:text-white transition-colors"
