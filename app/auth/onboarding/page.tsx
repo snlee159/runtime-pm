@@ -52,7 +52,7 @@ export default function OnboardingPage() {
         .single()
 
       if (profile?.onboarding_completed) {
-        router.push('/')
+        router.push('/dashboard')
       }
     }
     checkUser()
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
 
       if (profileError) throw profileError
 
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     } catch (err: any) {
       console.error('Onboarding error:', err)

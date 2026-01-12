@@ -8,7 +8,7 @@ import { getLocalDateString } from "@/lib/date-utils";
 import { useMemo } from "react";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Today" },
+  { href: "/dashboard", label: "Today" },
   { href: "/tasks", label: "Projects & Tasks" },
 ];
 
@@ -31,7 +31,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href={`/?date=${todayDate}`} className="text-xl font-bold">
+            <Link href={`/dashboard?date=${todayDate}`} className="text-xl font-bold">
               Runtime PM
             </Link>
             <div className="flex gap-1">
@@ -39,12 +39,13 @@ export function Navigation() {
                 // Check if current path matches (including /projects redirect to /tasks)
                 const isActive =
                   pathname === item.href ||
+                  (item.href === "/dashboard" && pathname === "/dashboard") ||
                   (item.href === "/tasks" && pathname === "/projects") ||
                   (item.href === "/tasks" && pathname?.startsWith("/tasks"));
 
                 // Add date param to Today link
                 const href =
-                  item.href === "/" ? `/?date=${todayDate}` : item.href;
+                  item.href === "/dashboard" ? `/dashboard?date=${todayDate}` : item.href;
 
                 return (
                   <Link

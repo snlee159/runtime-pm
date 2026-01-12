@@ -30,15 +30,30 @@ export async function updateSession(request: NextRequest) {
   // Refresh session if expired
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protected routes
-  if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
+  const pathname = request.nextUrl.pathname
+
+  // Allow auth pages for unauthenticated users
+  // Allow public API routes
+  const publicPaths = ['/auth']
+  const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'))
+  const isApiRoute = pathname.startsWith('/api')
+
+  // Redirect authenticated users from root to dashboard
+  if (user && pathname === '/') {
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // Redirect to home if authenticated and on auth pages
-  if (user && request.nextUrl.pathname.startsWith('/auth')) {
+  // Redirect authenticated users from auth pages to dashboard
+  if (user && pathname.startsWith('/auth')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // Redirect unauthenticated users from protected routes to landing page
+  if (!user && !isPublicPath && !isApiRoute && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)

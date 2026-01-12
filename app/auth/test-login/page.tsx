@@ -45,7 +45,7 @@ export default function TestLoginPage() {
       
       // Wait a moment then redirect
       setTimeout(() => {
-        router.push('/')
+        router.push('/dashboard')
         router.refresh()
       }, 1000)
     }

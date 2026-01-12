@@ -141,7 +141,7 @@ export default function SetupCheckPage() {
                   Your Runtime PM installation is configured correctly.
                 </p>
                 <a
-                  href="/"
+                  href="/dashboard"
                   className="inline-block px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition-colors"
                 >
                   Go to App →
