@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default async function LandingPage() {
   return (
@@ -6,7 +7,14 @@ export default async function LandingPage() {
       {/* Navigation */}
       <nav className="border-b border-zinc-800/50 backdrop-blur-sm bg-zinc-950/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+          <div className="flex items-center gap-2 text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+            <Image 
+              src="/favicon-light.svg" 
+              alt="Runtime PM Logo" 
+              width={32} 
+              height={32}
+              className="w-8 h-8"
+            />
             Runtime PM
           </div>
           <div className="flex items-center gap-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -31,7 +32,14 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href={`/dashboard?date=${todayDate}`} className="text-xl font-bold">
+            <Link href={`/dashboard?date=${todayDate}`} className="flex items-center gap-2 text-xl font-bold">
+              <Image 
+                src="/favicon-light.svg" 
+                alt="Runtime PM Logo" 
+                width={24} 
+                height={24}
+                className="w-6 h-6"
+              />
               Runtime PM
             </Link>
             <div className="flex gap-1">

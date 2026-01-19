@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -41,7 +42,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-zinc-950">
       <div className="w-full max-w-md p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Runtime PM</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <Image 
+              src="/favicon-light.svg" 
+              alt="Runtime PM Logo" 
+              width={32} 
+              height={32}
+              className="w-8 h-8"
+            />
+            <h1 className="text-3xl font-bold text-white">Runtime PM</h1>
+          </div>
           <p className="text-zinc-400">Your automated execution manager</p>
         </div>
 
