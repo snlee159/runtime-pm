@@ -1731,7 +1731,9 @@ export function TasksList({
       return;
     }
 
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    // Use secure API for delete operation
+    const { taskAPI } = await import("@/lib/api-secure");
+    const { error } = await taskAPI.delete(id);
 
     if (!error) {
       // Refresh tasks to update the list

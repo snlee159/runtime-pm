@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation";
 
 export default async function ProjectsPage() {
   // Redirect to the combined Projects & Tasks page
-  redirect('/tasks')
+  redirect("/tasks");
 }

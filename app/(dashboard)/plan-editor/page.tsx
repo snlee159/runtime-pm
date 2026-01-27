@@ -456,23 +456,18 @@ function PlanEditorPageContent() {
         ...planState.multitaskTaskIds,
       ].filter(Boolean) as string[];
 
-      // Save plan
-      const { error: planError } = await supabase.from("daily_plans").upsert(
-        {
-          user_id: user.id,
-          date,
-          checkin_id: checkIn?.id,
-          primary_focus_task_id: planState.primaryTaskId,
-          secondary_task_ids: planState.secondaryTaskIds,
-          multitask_task_ids: planState.multitaskTaskIds,
-          reasoning: reasoning || "Custom plan created by user",
-          estimated_total_effort: totalTime,
-          context_switches: planState.secondaryTaskIds.length,
-        },
-        {
-          onConflict: "user_id,date",
-        }
-      );
+      // Save plan using secure API
+      const { planAPI } = await import("@/lib/api-secure");
+      const { error: planError } = await planAPI.upsert({
+        date,
+        checkin_id: checkIn?.id,
+        primary_focus_task_id: planState.primaryTaskId,
+        secondary_task_ids: planState.secondaryTaskIds,
+        multitask_task_ids: planState.multitaskTaskIds,
+        reasoning: reasoning || "Custom plan created by user",
+        estimated_total_effort: totalTime,
+        context_switches: planState.secondaryTaskIds.length,
+      });
 
       if (planError) throw planError;
 

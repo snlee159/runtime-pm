@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Task, DailyPlan } from "@/lib/types";
 import { getLocalDateString } from "@/lib/date-utils";
+import { dataAPI, wrapAPI } from "@/lib/api-secure";
 
 export default function WrapPage() {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
@@ -34,13 +35,10 @@ export default function WrapPage() {
 
     const today = getLocalDateString();
 
-    // Get today's plan
-    const { data: planData } = await supabase
-      .from("daily_plans")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("date", today)
-      .single();
+    // Get today's plan using secure API
+    const { data: planData } = await dataAPI.select("daily_plans", {
+      filters: { eq: { date: today }, single: true },
+    });
 
     if (!planData) {
       setLoading(false);
@@ -56,12 +54,14 @@ export default function WrapPage() {
       ...(planData.multitask_task_ids || []),
     ].filter(Boolean);
 
-    const { data: tasksData } = await supabase
-      .from("tasks")
-      .select("*")
-      .in("id", taskIds);
+    if (taskIds.length > 0) {
+      const { data: tasksData } = await dataAPI.select("tasks", {
+        filters: { in: { id: taskIds } },
+      });
 
-    setTasks(tasksData || []);
+      setTasks(tasksData || []);
+    }
+    
     setLoading(false);
   };
 
@@ -88,57 +88,64 @@ export default function WrapPage() {
     e.preventDefault();
     setSubmitting(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const today = getLocalDateString();
-
-    // Save wrap
-    const { error } = await supabase.from("daily_wraps").upsert({
-      user_id: user.id,
-      date: today,
-      plan_id: plan?.id,
-      tasks_completed: completed,
-      tasks_deferred: deferred,
-      tasks_dropped: dropped,
-      actual_energy: actualEnergy || null,
-      what_went_well: whatWentWell || null,
-      what_broke: whatBroke || null,
-    });
-
-    if (!error) {
-      // Update task statuses
-      if (completed.length > 0) {
-        await supabase
-          .from("tasks")
-          .update({
-            status: "complete",
-            completed_at: new Date().toISOString(),
-          })
-          .in("id", completed);
-
-        // Auto-complete parent tasks for each completed task
-        const { autoCompleteParentTasks } = await import(
-          "@/lib/task-completion-utils"
-        );
-        for (const taskId of completed) {
-          await autoCompleteParentTasks(supabase, taskId, user.id);
-        }
-      }
-
-      // Deferred and dropped tasks remain incomplete and available for future planning
-      if (deferred.length > 0 || dropped.length > 0) {
-        await supabase
-          .from("tasks")
-          .update({ status: "incomplete" })
-          .in("id", [...deferred, ...dropped]);
-      }
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
 
       const today = getLocalDateString();
-      router.push(`/?date=${today}`);
-      router.refresh();
+
+      // Save wrap using secure API
+      const { error } = await wrapAPI.upsert({
+        date: today,
+        plan_id: plan?.id,
+        tasks_completed: completed,
+        tasks_deferred: deferred,
+        tasks_dropped: dropped,
+        actual_energy: actualEnergy || null,
+        what_went_well: whatWentWell || null,
+        what_broke: whatBroke || null,
+      });
+
+      if (!error) {
+        // Update task statuses using secure API
+        if (completed.length > 0) {
+          // Note: Bulk update of multiple tasks - using data operations API
+          for (const taskId of completed) {
+            await dataAPI.update("tasks", {
+              status: "complete",
+              completed_at: new Date().toISOString(),
+            }, { eq: { id: taskId } });
+          }
+
+          // Auto-complete parent tasks for each completed task
+          const { autoCompleteParentTasks } = await import(
+            "@/lib/task-completion-utils"
+          );
+          for (const taskId of completed) {
+            // Note: task-completion-utils needs to be updated to use secure API
+            // For now, using supabase directly for internal utilities
+            await autoCompleteParentTasks(supabase, taskId, user.id);
+          }
+        }
+
+        // Deferred and dropped tasks remain incomplete
+        if (deferred.length > 0 || dropped.length > 0) {
+          for (const taskId of [...deferred, ...dropped]) {
+            await dataAPI.update("tasks", {
+              status: "incomplete"
+            }, { eq: { id: taskId } });
+          }
+        }
+
+        const today = getLocalDateString();
+        router.push(`/?date=${today}`);
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Error submitting wrap:", error);
+      alert("Failed to save wrap. Please try again.");
     }
 
     setSubmitting(false);

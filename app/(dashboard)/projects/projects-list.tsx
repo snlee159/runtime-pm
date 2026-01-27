@@ -1,79 +1,81 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Project, ProjectStatus } from '@/lib/types'
-import { useRouter } from 'next/navigation'
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Project, ProjectStatus } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 interface ProjectsListProps {
-  initialProjects: Project[]
+  initialProjects: Project[];
 }
 
 const PROJECT_COLORS = [
-  { name: 'Gray', value: '#6b7280' },
-  { name: 'Blue', value: '#3b82f6' },
-  { name: 'Green', value: '#10b981' },
-  { name: 'Purple', value: '#8b5cf6' },
-  { name: 'Orange', value: '#f59e0b' },
-  { name: 'Pink', value: '#ec4899' },
-  { name: 'Red', value: '#ef4444' },
-  { name: 'Teal', value: '#14b8a6' },
-  { name: 'Indigo', value: '#6366f1' },
-]
+  { name: "Gray", value: "#6b7280" },
+  { name: "Blue", value: "#3b82f6" },
+  { name: "Green", value: "#10b981" },
+  { name: "Purple", value: "#8b5cf6" },
+  { name: "Orange", value: "#f59e0b" },
+  { name: "Pink", value: "#ec4899" },
+  { name: "Red", value: "#ef4444" },
+  { name: "Teal", value: "#14b8a6" },
+  { name: "Indigo", value: "#6366f1" },
+];
 
 export function ProjectsList({ initialProjects }: ProjectsListProps) {
-  const [projects, setProjects] = useState(initialProjects)
-  const [showForm, setShowForm] = useState(false)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [color, setColor] = useState('#3b82f6')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const [projects, setProjects] = useState(initialProjects);
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [color, setColor] = useState("#3b82f6");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
   const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     const { data, error } = await supabase
-      .from('projects')
+      .from("projects")
       .insert({
         user_id: user.id,
         name,
         description: description || null,
         color,
-        status: 'active',
+        status: "active",
       })
       .select()
-      .single()
+      .single();
 
     if (!error && data) {
-      setProjects([data, ...projects])
-      setName('')
-      setDescription('')
-      setColor('#3b82f6')
-      setShowForm(false)
+      setProjects([data, ...projects]);
+      setName("");
+      setDescription("");
+      setColor("#3b82f6");
+      setShowForm(false);
     }
 
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const handleStatusChange = async (id: string, status: ProjectStatus) => {
     const { error } = await supabase
-      .from('projects')
+      .from("projects")
       .update({ status })
-      .eq('id', id)
+      .eq("id", id);
 
     if (!error) {
-      setProjects(projects.map(p => p.id === id ? { ...p, status } : p))
+      setProjects(projects.map((p) => (p.id === id ? { ...p, status } : p)));
     }
-  }
+  };
 
-  const activeProjects = projects.filter(p => p.status === 'active')
-  const otherProjects = projects.filter(p => p.status !== 'active')
+  const activeProjects = projects.filter((p) => p.status === "active");
+  const otherProjects = projects.filter((p) => p.status !== "active");
 
   return (
     <div className="space-y-6">
@@ -89,7 +91,10 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
 
       {/* Create Form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
+        <form
+          onSubmit={handleCreate}
+          className="bg-zinc-900 border border-zinc-800 rounded-lg p-6"
+        >
           <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-2">
@@ -106,7 +111,10 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               />
             </div>
             <div>
-              <label htmlFor="description" className="block text-sm font-medium mb-2">
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium mb-2"
+              >
                 Description (optional)
               </label>
               <textarea
@@ -118,9 +126,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-3">
-                Color
-              </label>
+              <label className="block text-sm font-medium mb-3">Color</label>
               <div className="flex gap-2 flex-wrap">
                 {PROJECT_COLORS.map((colorOption) => (
                   <button
@@ -128,9 +134,9 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                     type="button"
                     onClick={() => setColor(colorOption.value)}
                     className={`w-10 h-10 rounded-lg transition-all ${
-                      color === colorOption.value 
-                        ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-950 scale-110' 
-                        : 'hover:scale-105'
+                      color === colorOption.value
+                        ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-950 scale-110"
+                        : "hover:scale-105"
                     }`}
                     style={{ backgroundColor: colorOption.value }}
                     title={colorOption.name}
@@ -166,22 +172,30 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
           </h2>
           <div className="space-y-3">
             {activeProjects.map((project) => (
-              <div 
-                key={project.id} 
+              <div
+                key={project.id}
                 className="bg-zinc-900 border border-zinc-800 rounded-lg p-6"
-                style={{ borderLeftColor: project.color || '#6b7280', borderLeftWidth: '4px' }}
+                style={{
+                  borderLeftColor: project.color || "#6b7280",
+                  borderLeftWidth: "4px",
+                }}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3">
-                    <div 
+                    <div
                       className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: project.color || '#6b7280' }}
+                      style={{ backgroundColor: project.color || "#6b7280" }}
                     />
                     <h3 className="text-xl font-semibold">{project.name}</h3>
                   </div>
                   <select
                     value={project.status}
-                    onChange={(e) => handleStatusChange(project.id, e.target.value as ProjectStatus)}
+                    onChange={(e) =>
+                      handleStatusChange(
+                        project.id,
+                        e.target.value as ProjectStatus,
+                      )
+                    }
                     className="px-3 py-1 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:ring-2 focus:ring-zinc-600"
                   >
                     <option value="active">Active</option>
@@ -207,25 +221,35 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
           </h2>
           <div className="space-y-3">
             {otherProjects.map((project) => (
-              <div 
-                key={project.id} 
+              <div
+                key={project.id}
                 className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 opacity-60"
-                style={{ borderLeftColor: project.color || '#6b7280', borderLeftWidth: '4px' }}
+                style={{
+                  borderLeftColor: project.color || "#6b7280",
+                  borderLeftWidth: "4px",
+                }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <div 
+                    <div
                       className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: project.color || '#6b7280' }}
+                      style={{ backgroundColor: project.color || "#6b7280" }}
                     />
                     <div>
                       <h3 className="font-medium">{project.name}</h3>
-                      <span className="text-sm text-zinc-500 capitalize">{project.status}</span>
+                      <span className="text-sm text-zinc-500 capitalize">
+                        {project.status}
+                      </span>
                     </div>
                   </div>
                   <select
                     value={project.status}
-                    onChange={(e) => handleStatusChange(project.id, e.target.value as ProjectStatus)}
+                    onChange={(e) =>
+                      handleStatusChange(
+                        project.id,
+                        e.target.value as ProjectStatus,
+                      )
+                    }
                     className="px-3 py-1 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:ring-2 focus:ring-zinc-600"
                   >
                     <option value="active">Active</option>
@@ -246,6 +270,5 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
-

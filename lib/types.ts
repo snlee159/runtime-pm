@@ -249,4 +249,3 @@ export interface OnboardingFormData {
   team_size?: string
   timezone?: string
 }
-

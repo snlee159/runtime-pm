@@ -381,7 +381,7 @@ export default function ProfilePage() {
                   const value = parseInt(e.target.value);
                   updateProfile(
                     "preferred_task_duration",
-                    isNaN(value) ? 60 : value
+                    isNaN(value) ? 60 : value,
                   );
                 }}
                 className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zinc-600"
