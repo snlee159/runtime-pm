@@ -27,36 +27,52 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired
-  const { data: { user } } = await supabase.auth.getUser()
-
   const pathname = request.nextUrl.pathname
 
-  // Allow auth pages for unauthenticated users
-  // Allow public API routes
+  // Allow auth pages and API routes
   const publicPaths = ['/auth']
   const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'))
   const isApiRoute = pathname.startsWith('/api')
 
-  // Redirect authenticated users from root to dashboard
-  if (user && pathname === '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
+  try {
+    // Add timeout to prevent 504 errors
+    const userPromise = supabase.auth.getUser()
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout')), 3000) // 3 second timeout
+    )
 
-  // Redirect authenticated users from auth pages to dashboard
-  if (user && pathname.startsWith('/auth')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
+    const { data: { user } } = await Promise.race([userPromise, timeoutPromise]) as any
 
-  // Redirect unauthenticated users from protected routes to landing page
-  if (!user && !isPublicPath && !isApiRoute && pathname !== '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
+    // Redirect authenticated users from root to dashboard
+    if (user && pathname === '/') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
+
+    // Redirect authenticated users from auth pages to dashboard
+    if (user && pathname.startsWith('/auth')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
+
+    // Redirect unauthenticated users from protected routes to landing page
+    if (!user && !isPublicPath && !isApiRoute && pathname !== '/') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+
+  } catch (error) {
+    console.error('Middleware auth check failed:', error)
+    // On error, allow the request through for public paths
+    // For protected paths, redirect to home
+    if (!isPublicPath && !isApiRoute && pathname !== '/') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
