@@ -69,9 +69,9 @@ export default function SignUpPage() {
         }, 3000)
       } else {
         // No confirmation needed, proceed to onboarding
+        // Use window.location for hard redirect to bypass middleware
         console.log('Redirecting to onboarding...')
-        router.push('/auth/onboarding')
-        router.refresh()
+        window.location.href = '/auth/onboarding'
       }
     } else {
       setError('Failed to create account. Please try again.')

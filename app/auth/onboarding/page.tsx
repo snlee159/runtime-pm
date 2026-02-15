@@ -49,20 +49,22 @@ export default function OnboardingPage() {
       console.log('Onboarding: User found:', user.id)
       setUserId(user.id)
 
-      // Check if user already has a profile
-      const { data: profile } = await supabase
+      // Check if user already has a profile (use maybeSingle to handle no profile case)
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
-      console.log('Onboarding: Profile check:', profile)
+      console.log('Onboarding: Profile check:', profile, 'Error:', profileError)
 
-      if (profile?.onboarding_completed) {
+      // Only redirect if profile exists AND onboarding is completed
+      // If no profile or onboarding not completed, stay here
+      if (profile && profile.onboarding_completed) {
         console.log('Onboarding: Already completed, redirecting to dashboard')
         router.push('/dashboard')
       } else {
-        console.log('Onboarding: Not completed, showing form')
+        console.log('Onboarding: Not completed or no profile, showing form')
       }
     }
     checkUser()
