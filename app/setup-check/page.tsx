@@ -15,7 +15,7 @@ export default function SetupCheckPage() {
   }, [])
 
   const runChecks = async () => {
-    const results = []
+    const results: any[] = []
 
     // Check 1: Environment variables
     results.push({

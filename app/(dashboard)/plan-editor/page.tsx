@@ -138,7 +138,7 @@ function PlanEditorPageContent() {
           }));
         };
 
-        const taskIds = tasksData?.map((t) => t.id) || [];
+        const taskIds = tasksData?.map((t: any) => t.id) || [];
         const allSubtasks = await loadSubtasksRecursively(taskIds);
 
         // Load dependencies for all tasks
@@ -148,11 +148,11 @@ function PlanEditorPageContent() {
           .in("task_id", taskIds);
 
         tasksWithSubtasks =
-          tasksData?.map((task) => ({
+          tasksData?.map((task: any) => ({
             ...task,
             dependencies:
-              dependencies?.filter((dep) => dep.task_id === task.id) || [],
-            subtasks: allSubtasks.filter((st) => st.parent_task_id === task.id),
+              dependencies?.filter((dep: any) => dep.task_id === task.id) || [],
+            subtasks: allSubtasks.filter((st: any) => st.parent_task_id === task.id),
           })) || [];
 
         setAllTasks(tasksWithSubtasks);

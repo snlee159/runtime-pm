@@ -533,7 +533,7 @@ function generateReasoning(params: {
 
   // User priorities acknowledgment - BE SPECIFIC
   if (priorities && priorities.trim()) {
-    const priorityTasksSelected = [];
+    const priorityTasksSelected: string[] = [];
     if (primaryTask && matchesUserPriorities(primaryTask, userPriorities)) {
       priorityTasksSelected.push(`primary task (${primaryTask.title})`);
     }
