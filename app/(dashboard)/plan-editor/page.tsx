@@ -126,14 +126,14 @@ function PlanEditorPageContent() {
           if (!subtasks || subtasks.length === 0) return [];
 
           // Load nested subtasks for these subtasks
-          const nestedIds = subtasks.map((st) => st.id);
+          const nestedIds = subtasks.map((st: any) => st.id);
           const nestedSubtasks = await loadSubtasksRecursively(nestedIds);
 
           // Attach nested subtasks to their parents
-          return subtasks.map((st) => ({
+          return subtasks.map((st: any) => ({
             ...st,
             subtasks: nestedSubtasks.filter(
-              (nst) => nst.parent_task_id === st.id
+              (nst: any) => nst.parent_task_id === st.id
             ),
           }));
         };

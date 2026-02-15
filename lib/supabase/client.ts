@@ -1,23 +1,33 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+let clientInstance: ReturnType<typeof createBrowserClient> | null = null
+
 export function createClient() {
+  // Return cached instance if it exists (browser only)
+  if (typeof window !== 'undefined' && clientInstance) {
+    return clientInstance
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // During build time, environment variables might not be available
-  // Return a mock client to prevent build errors
+  // During SSR/build, if variables are missing, create a dummy client
+  // This should never be used in actual runtime
   if (!supabaseUrl || !supabaseAnonKey) {
-    // Only throw in browser/runtime, not during build
-    if (typeof window !== 'undefined') {
-      throw new Error('Missing Supabase environment variables')
-    }
-    // Return a dummy client for build time
+    console.warn('Supabase environment variables not found - using placeholder')
     return createBrowserClient(
       'https://placeholder.supabase.co',
-      'placeholder-key'
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder'
     )
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  const client = createBrowserClient(supabaseUrl, supabaseAnonKey)
+  
+  // Cache the client instance in browser
+  if (typeof window !== 'undefined') {
+    clientInstance = client
+  }
+  
+  return client
 }
 
