@@ -89,13 +89,14 @@ export default async function TodayPage({
   }
 
   // Check if user has completed onboarding
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("user_profiles")
     .select("onboarding_completed")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   // Redirect to onboarding if profile doesn't exist or onboarding not completed
+  // Use maybeSingle() instead of single() to avoid errors when no profile exists
   if (!profile || !profile.onboarding_completed) {
     redirect("/auth/onboarding");
   }
