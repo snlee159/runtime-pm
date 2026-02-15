@@ -29,8 +29,8 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Allow auth pages and API routes
-  const publicPaths = ['/auth']
+  // Allow auth pages, API routes, and debug pages
+  const publicPaths = ['/auth', '/debug-user', '/setup-check']
   const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'))
   const isApiRoute = pathname.startsWith('/api')
 
