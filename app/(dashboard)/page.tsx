@@ -88,6 +88,18 @@ export default async function TodayPage({
     redirect("/auth/login");
   }
 
+  // Check if user has completed onboarding
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("onboarding_completed")
+    .eq("user_id", user.id)
+    .single();
+
+  // Redirect to onboarding if profile doesn't exist or onboarding not completed
+  if (!profile || !profile.onboarding_completed) {
+    redirect("/auth/onboarding");
+  }
+
   // Get the date from search params (passed from client) or fallback to server's local date
   const params = await searchParams;
   const today = (params.date as string) || getLocalDateString();
