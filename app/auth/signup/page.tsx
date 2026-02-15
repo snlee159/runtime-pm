@@ -69,7 +69,9 @@ export default function SignUpPage() {
         }, 3000)
       } else {
         // No confirmation needed, proceed to onboarding
+        console.log('Redirecting to onboarding...')
         router.push('/auth/onboarding')
+        router.refresh()
       }
     } else {
       setError('Failed to create account. Please try again.')

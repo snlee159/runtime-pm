@@ -52,7 +52,8 @@ export async function updateSession(request: NextRequest) {
 
     // Redirect authenticated users from auth pages to dashboard
     // BUT allow /auth/onboarding for new users
-    if (user && pathname.startsWith('/auth') && pathname !== '/auth/onboarding') {
+    const isOnboarding = pathname === '/auth/onboarding' || pathname.startsWith('/auth/onboarding/')
+    if (user && pathname.startsWith('/auth') && !isOnboarding) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)

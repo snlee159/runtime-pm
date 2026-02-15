@@ -39,11 +39,14 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const checkUser = async () => {
+      console.log('Onboarding: Checking user...')
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
+        console.log('Onboarding: No user, redirecting to login')
         router.push('/auth/login')
         return
       }
+      console.log('Onboarding: User found:', user.id)
       setUserId(user.id)
 
       // Check if user already has a profile
@@ -53,8 +56,13 @@ export default function OnboardingPage() {
         .eq('user_id', user.id)
         .single()
 
+      console.log('Onboarding: Profile check:', profile)
+
       if (profile?.onboarding_completed) {
+        console.log('Onboarding: Already completed, redirecting to dashboard')
         router.push('/dashboard')
+      } else {
+        console.log('Onboarding: Not completed, showing form')
       }
     }
     checkUser()
