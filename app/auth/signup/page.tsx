@@ -54,8 +54,23 @@ export default function SignUpPage() {
     }
 
     if (data.user) {
-      // Navigate to onboarding
-      router.push('/auth/onboarding')
+      // Check if email confirmation is required
+      // If identities array is empty, email confirmation is required
+      const needsConfirmation = !data.user.identities || data.user.identities.length === 0
+      
+      if (needsConfirmation) {
+        // Email confirmation required - show message
+        setError('✅ Account created! Please check your email to confirm your account before logging in.')
+        setLoading(false)
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          router.push('/auth/login')
+        }, 3000)
+      } else {
+        // No confirmation needed, proceed to onboarding
+        router.push('/auth/onboarding')
+      }
     } else {
       setError('Failed to create account. Please try again.')
       setLoading(false)
@@ -133,7 +148,11 @@ export default function SignUpPage() {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-950/50 border border-red-900 rounded-lg text-red-400 text-sm">
+            <div className={`p-3 rounded-lg text-sm ${
+              error.includes('✅') || error.includes('created')
+                ? 'bg-green-950/50 border border-green-900 text-green-400'
+                : 'bg-red-950/50 border border-red-900 text-red-400'
+            }`}>
               {error}
             </div>
           )}
